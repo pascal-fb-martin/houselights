@@ -15,3 +15,6 @@ Examples of control web services compatible with the server  are [orvibo](https:
 
 You will need to have at least one control service installed and running.
 
+## Configuration
+The lights schedule can be edited from the HouseLights web interface.
+

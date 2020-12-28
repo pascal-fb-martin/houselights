@@ -242,7 +242,6 @@ static void houselights_plugs_discovered
        if (strcmp (Plugs[plug].url, provider)) {
            snprintf (Plugs[plug].url, sizeof(Plugs[plug].url), provider);
            Plugs[plug].status = 'i';
-           Plugs[plug].countdown = MAX_LIFE; // New lease in life.
 
            DEBUG ("Plug %s discovered on %s\n",
                   Plugs[plug].name, Plugs[plug].url);
@@ -256,6 +255,7 @@ static void houselights_plugs_discovered
                houselights_plugs_submit (plug);
            }
        }
+       Plugs[plug].countdown = MAX_LIFE; // New lease in life.
    }
 }
 

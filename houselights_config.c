@@ -27,10 +27,6 @@
  *    Load the configuration from the specified config option, or else
  *    from the default config file.
  *
- * int houselights_config_size (void);
- *
- *    Return the size of the configuration JSON text currently used.
- *
  * const char *houselights_config_save (const char *text);
  *
  *    Update the live configuration and save the text to configuration file.
@@ -106,14 +102,10 @@ const char *houselights_config_save (const char *text) {
 
     int fd = open (ConfigFile, O_WRONLY+O_CREAT, 0777);
     if (fd >= 0) {
-        write (fd, text, ConfigTextLength);
+        write (fd, text, strlen(text));
         close (fd);
     }
     return 0;
-}
-
-int houselights_config_size (void) {
-    return ConfigTextLength;
 }
 
 int houselights_config_find (int parent, const char *path, int type) {

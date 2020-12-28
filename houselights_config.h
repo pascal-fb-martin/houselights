@@ -23,8 +23,6 @@
 const char *houselights_config_load (int argc, const char **argv);
 const char *houselights_config_save (const char *text);
 
-int houselights_config_size (void);
-
 const char *houselights_config_string  (int parent, const char *path);
 int         houselights_config_integer (int parent, const char *path);
 int         houselights_config_boolean (int parent, const char *path);

@@ -242,9 +242,11 @@ static void houselights_plugs_discovered
        if (strcmp (Plugs[plug].url, provider)) {
            snprintf (Plugs[plug].url, sizeof(Plugs[plug].url), provider);
            Plugs[plug].status = 'i';
+           Plugs[plug].countdown = MAX_LIFE; // New lease in life.
+
            DEBUG ("Plug %s discovered on %s\n",
                   Plugs[plug].name, Plugs[plug].url);
-           houselog_event ("ZONE", Plugs[plug].name, "ROUTE",
+           houselog_event ("PLUG", Plugs[plug].name, "ROUTE",
                            "TO %s", Plugs[plug].url);
 
            // If we discovered a plug for which there is a pending control,
@@ -284,8 +286,12 @@ static void houselights_plugs_prune (time_t now) {
         Plugs[i].deadline = 0;
         if (Plugs[i].name) {
             if (--(Plugs[i].countdown) <= 0) {
+                 DEBUG ("Plug %s on %s pruned\n", Plugs[i].name, Plugs[i].url);
+                 houselog_event
+                     ("PLUG", Plugs[i].name, "PRUNE", "FROM %s", Plugs[i].url);
                 free(Plugs[i].name);
                 Plugs[i].name = 0;
+                Plugs[i].url[0] = 0;
             }
         }
         if (!Plugs[i].name) {

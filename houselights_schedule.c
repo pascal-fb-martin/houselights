@@ -150,14 +150,15 @@ static int houselights_schedule_adjust (LightTime *t) {
 const char *houselights_schedule_load (int argc, const char *argv[]) {
 
     int i;
-    const char *mode = houselights_config_string (0, ".mode");
-    int schedules = houselights_config_array(0, ".schedules");
+    const char *mode = houselights_config_string (0, ".lights.mode");
+    int schedules = houselights_config_array(0, ".lights.schedules");
 
     if (mode && strcmp (mode, "auto")) {
         ScheduleDisabled = 1;
     } else {
         ScheduleDisabled = 0;
     }
+    if (echttp_isdebug()) printf ("Schedule disabled: %s (%s)\n", ScheduleDisabled?"true":"false", mode?"configured":"default");
 
     for (i = 0; i < SchedulesCount; ++i) {
         if (Schedules[i].plug) free (Schedules[i].plug);
@@ -166,6 +167,8 @@ const char *houselights_schedule_load (int argc, const char *argv[]) {
 
     if (schedules > 0) {
         int count = houselights_config_array_length (schedules);
+
+        if (echttp_isdebug()) printf ("Schedule: %d entries\n", count);
 
         if (count > MAX_SCHEDULES) count = MAX_SCHEDULES;
         SchedulesCount = 0;
@@ -182,6 +185,7 @@ const char *houselights_schedule_load (int argc, const char *argv[]) {
             int days = houselights_config_integer (item, ".days");
             if (!days) days = 0x7f;
             houselights_schedule_add (device, on, off, days);
+            if (echttp_isdebug()) printf ("  %s\n", device);
         }
     }
 }

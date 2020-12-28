@@ -188,6 +188,7 @@ const char *houselights_schedule_load (int argc, const char *argv[]) {
             if (echttp_isdebug()) printf ("  %s\n", device);
         }
     }
+    return 0;
 }
 
 void houselights_schedule_enable (void) {

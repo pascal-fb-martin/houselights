@@ -42,6 +42,7 @@
 
 #include "houseportalclient.h"
 #include "houselog.h"
+#include "housediscover.h"
 
 #include "houselights_plugs.h"
 #include "houselights_config.h"
@@ -129,6 +130,7 @@ static const char *lights_add (const char *method, const char *uri,
     const char *days = echttp_parameter_get("days");
 
     houselights_schedule_add (device, on, off, atoi(days));
+    housediscover (0);
 
     return lights_save (method, uri, data, length);
 }
@@ -162,6 +164,8 @@ static void lights_background (int fd, int mode) {
     }
     houselights_plugs_periodic(now);
     houselights_schedule_periodic(now);
+    houselog_background (now);
+    housediscover (now);
 }
 
 static void lights_protect (const char *method, const char *uri) {
@@ -216,6 +220,8 @@ int main (int argc, const char **argv) {
 
     echttp_static_route ("/", "/usr/local/share/house/public");
     echttp_background (&lights_background);
+    housediscover_initialize (argc, argv);
+
     houselog_event ("SERVICE", "lights", "START", "ON %s", HostName);
     echttp_loop();
 }

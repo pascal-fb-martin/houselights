@@ -90,9 +90,9 @@ static const char *lights_set (const char *method, const char *uri,
             echttp_error (400, "invalid pulse value");
             return "";
         }
-        houselights_plugs_on (name, pulse);
+        houselights_plugs_on (name, pulse, 1);
     } else if (!strcmp(state, "off")) {
-        houselights_plugs_off (name);
+        houselights_plugs_off (name, 1);
     } else {
         echttp_error (400, "invalid state value");
         return "";

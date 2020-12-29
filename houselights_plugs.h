@@ -21,8 +21,8 @@
  * houselights_plugs.h - Control the light plugs.
  *
  */
-void houselights_plugs_on  (const char *name, int pulse);
-void houselights_plugs_off (const char *name);
+void houselights_plugs_on  (const char *name, int pulse, int manual);
+void houselights_plugs_off (const char *name, int manual);
 
 void houselights_plugs_periodic (time_t now);
 

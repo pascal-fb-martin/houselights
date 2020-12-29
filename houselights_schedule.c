@@ -297,7 +297,7 @@ void houselights_schedule_periodic (time_t now) {
         // own after a minute.
         //
         if (active) {
-            houselights_plugs_on (Schedules[i].plug, 65);
+            houselights_plugs_on (Schedules[i].plug, 65, 0);
             if (Schedules[i].state != 'a') {
                 houselog_event ("PLUG", Schedules[i].plug, "ON",
                                 "for %d minutes", duration);

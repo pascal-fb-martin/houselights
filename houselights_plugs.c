@@ -76,6 +76,8 @@ typedef struct {
     int countdown;
     int pulse;
     time_t deadline;
+    char manual;
+    char pulsed;
     char status; // u: unmapped, i: idle, a: active (pending).
     char url[256];
 } LightPlug;
@@ -107,6 +109,8 @@ static int houselights_plugs_search (const char *name) {
     Plugs[free].countdown = MAX_LIFE;
     Plugs[free].commanded = 0;
     Plugs[free].pulse = 0;
+    Plugs[free].pulsed = 0;
+    Plugs[free].manual = 0;
     Plugs[free].status = 'u';
     Plugs[free].url[0] = 0;
 
@@ -145,7 +149,15 @@ static void houselights_plugs_submit (int plug) {
     }
 
     int pulse = (int) (Plugs[plug].deadline - now);
-    houselog_event ("PLUG", Plugs[plug].name, "START", "FOR %d SECONDS", pulse);
+    if (Plugs[plug].manual) { // Scheduled controls are logged by the scheduler
+        if (Plugs[plug].pulsed) {
+            houselog_event ("PLUG", Plugs[plug].name, "COMMANDED",
+                            "%s FOR %d SECONDS", Plugs[plug].commanded, pulse);
+        } else {
+            houselog_event ("PLUG", Plugs[plug].name, "COMMANDED",
+                            "%s", Plugs[plug].commanded);
+        }
+    }
     static char url[256];
     snprintf (url, sizeof(url), "%s/set?point=%s&state=%s&pulse=%d",
               Plugs[plug].url,
@@ -163,23 +175,27 @@ static void houselights_plugs_submit (int plug) {
 }
 
 static void houselights_plugs_set (const char *name,
-                                   const char *state, int pulse) {
+                                   const char *state, int pulse, int manual) {
 
     int plug = houselights_plugs_search (name);
 
     if (plug >= 0) {
         time_t now = time(0);
-        DEBUG ("%ld: Start plug %s for %d seconds\n",
-               (long)now, Plugs[plug].name, pulse);
+        DEBUG ("%ld: Start plug %s for %d seconds (%s)\n",
+               (long)now, Plugs[plug].name, pulse, manual?"manual":"scheduled");
 
         Plugs[plug].commanded = state;
+        Plugs[plug].manual = manual;
         if (Plugs[plug].status == 'i') Plugs[plug].status = 'a';
 
-        if (pulse <= 0) 
-            Plugs[plug].deadline =  now + PLUG_CONTROL_EXPIRATION;
-        else
-            Plugs[plug].deadline =  now + pulse;
-    
+        if (pulse <= 0) {
+            // Never turn a light on forever. Do not waste energy.
+            Plugs[plug].pulsed = 0;
+            Plugs[plug].deadline = now + PLUG_CONTROL_EXPIRATION;
+        } else {
+            Plugs[plug].pulsed = 1;
+            Plugs[plug].deadline = now + pulse;
+        }
         if (Plugs[plug].url[0]) houselights_plugs_submit (plug);
     }
 }
@@ -241,7 +257,7 @@ static void houselights_plugs_discovered
        if (plug < 0) continue;
        if (strcmp (Plugs[plug].url, provider)) {
            snprintf (Plugs[plug].url, sizeof(Plugs[plug].url), provider);
-           Plugs[plug].status = 'i';
+           if (Plugs[plug].status == 'u') Plugs[plug].status = 'i';
 
            DEBUG ("Plug %s discovered on %s\n",
                   Plugs[plug].name, Plugs[plug].url);
@@ -336,14 +352,14 @@ void houselights_plugs_periodic (time_t now) {
     houselights_plugs_prune (now);
 }
 
-void houselights_plugs_on (const char *name, int pulse) {
+void houselights_plugs_on (const char *name, int pulse, int manual) {
 
-    houselights_plugs_set (name, "on", pulse);
+    houselights_plugs_set (name, "on", pulse, manual);
 }
 
-void houselights_plugs_off (const char *name) {
+void houselights_plugs_off (const char *name, int manual) {
 
-    houselights_plugs_set (name, "off", 0);
+    houselights_plugs_set (name, "off", 0, manual);
 }
 
 int houselights_plugs_status (char *buffer, int size) {

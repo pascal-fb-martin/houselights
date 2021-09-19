@@ -80,7 +80,19 @@ function lightsShow (response) {
         inner.appendChild(button);
         outer.appendChild(inner);
         schlist.insertBefore(outer, addline);
-    }
+   }
+   var label = "Enable Schedule";
+   var action = enableSchedule;
+   if (response.lights.mode == "auto") {
+        label = "Disable Schedule";
+        action = disableSchedule;
+   }
+   var buttons = document.getElementsByClassName ("modeButton");
+   for (var i = 0; i < buttons.length; i++) {
+       buttons[i].innerHTML = label;
+       buttons[i].disabled = false;
+       buttons[i].onclick = action;
+   }
 }
 
 function lightsUpdate (response) {
@@ -93,9 +105,12 @@ function lightsUpdate (response) {
    lightsShow(response);
 }
 
-function lightsRefresh () {
+function lightsRefresh (request) {
     var command = new XMLHttpRequest();
-    command.open("GET", "/lights/status");
+    if (request)
+        command.open("GET", request);
+    else
+        command.open("GET", "/lights/status");
     command.onreadystatechange = function () {
         if (command.readyState === 4 && command.status === 200) {
             var response = JSON.parse(command.responseText);
@@ -138,6 +153,16 @@ function lightsAdd () {
         }
     }
     command.send(null);
+}
+
+function doNothing() {}
+
+function enableSchedule () {
+    lightsRefresh ("/lights/enable");
+}
+
+function disableSchedule () {
+    lightsRefresh ("/lights/disable");
 }
 
 window.onload = function() {
@@ -188,6 +213,20 @@ window.onload = function() {
          <td><input type="checkbox" id="lightfri"></td>
          <td><input type="checkbox" id="lightsat"></td>
          <td><button onclick="lightsAdd()">Add</button></td>
+      </tr>
+      <tr>
+         <td></td>
+         <td></td>
+         <td></td>
+         <td></td>
+         <td></td>
+         <td></td>
+         <td></td>
+         <td></td>
+         <td></td>
+         <td></td>
+         <td></td>
+         <td><button class="modeButton" disabled onclick="doNothing()">Loading..</button></td>
       </tr>
    </table>
 </body>

@@ -389,7 +389,7 @@ int houselights_plugs_status (char *buffer, int size) {
         char p[256];
 
         if (Plugs[i].url[0])
-            snprintf (s, sizeof(s), ",\"%s\"", Plugs[i].url);
+            snprintf (s, sizeof(s), ",\"url\":\"%s\"", Plugs[i].url);
         else
             s[0] = 0;
 

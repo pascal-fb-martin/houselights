@@ -123,6 +123,16 @@ static int houselights_plugs_search (const char *name) {
     return free;
 }
 
+static void houselights_plugs_provider_keep (const char *provider) {
+    int i;
+    for (i = 0; i < ProvidersCount; ++i) {
+        if (!strcmp (Providers[i], provider)) return;
+    }
+    if (ProvidersCount >= MAX_PROVIDER) --ProvidersCount; // Avoid overflow.
+
+    Providers[ProvidersCount++] = strdup(provider); // Keep the string.
+}
+
 static void houselights_plugs_discovery (const char *provider,
                                          char *data, int length) {
 
@@ -231,7 +241,7 @@ static void houselights_plugs_scan_server
 
     char url[256];
 
-    Providers[ProvidersCount++] = strdup(provider); // Keep the string.
+    houselights_plugs_provider_keep (provider);
 
     snprintf (url, sizeof(url), "%s/status", provider);
 
@@ -367,9 +377,10 @@ void houselights_plugs_periodic (time_t now) {
     if (starting == 0) starting = now;
 
     for (i = 0; i < PlugsCount; ++i) {
+        if (Plugs[i].url[0] == 0) continue;
         if (Plugs[i].pending <= 0) continue;
         if (now > Plugs[i].pending) {
-           houselights_plugs_scan_server ("control", 0, Plugs[i].url);
+            houselights_plugs_scan_server ("control", 0, Plugs[i].url);
         }
     }
 

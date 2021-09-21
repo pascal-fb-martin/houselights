@@ -180,6 +180,9 @@ static void houselights_plugs_discovery (const char *provider,
        if (plug < 0) continue;
 
        if (strcmp (Plugs[plug].url, provider)) {
+           // Only consider lights. Still accept no gear field (compatibility)
+           int gear = echttp_json_search (inner, ".gear");
+           if (gear >= 0 && strcmp (inner[gear].value.string, "light")) continue;
            snprintf (Plugs[plug].url, sizeof(Plugs[plug].url), provider);
            if (Plugs[plug].status == 'u') Plugs[plug].status = 'i';
 

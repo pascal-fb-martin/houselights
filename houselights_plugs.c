@@ -76,6 +76,7 @@ typedef struct {
     char state[8];
     int countdown;
     int pulse;
+    time_t pending;
     time_t deadline;
     char manual;
     char pulsed;
@@ -117,6 +118,7 @@ static int houselights_plugs_search (const char *name) {
     Plugs[free].manual = 0;
     Plugs[free].status = 'u';
     Plugs[free].url[0] = 0;
+    Plugs[free].pending = 0;
 
     return free;
 }
@@ -129,6 +131,8 @@ static void houselights_plugs_discovery (const char *provider,
    char path[256];
    int  count = 100;
    int  i;
+
+   time_t now = time(0);
 
    // Analyze the answer and retrieve the control points matching our plugs.
    const char *error = echttp_json_parse (data, tokens, &count);
@@ -183,9 +187,22 @@ static void houselights_plugs_discovery (const char *provider,
        }
 
        int state = echttp_json_search (inner, ".state");
-       if (state >= 0)
-           strncpy (Plugs[plug].state,
-                    inner[state].value.string, sizeof(Plugs[0].state));
+       if (state >= 0) {
+           if (strcmp (Plugs[plug].state, inner[state].value.string)) {
+               strncpy (Plugs[plug].state,
+                        inner[state].value.string, sizeof(Plugs[0].state));
+               houselog_event ("PLUG", Plugs[plug].name, "CHANGED",
+                               "TO %s", Plugs[plug].state);
+           }
+       }
+
+       Plugs[plug].pending = 0;
+       int command = echttp_json_search (inner, ".command");
+       if (command >= 0) {
+           if (strcmp (Plugs[plug].state, inner[command].value.string)) {
+               Plugs[plug].pending = now;
+           }
+       }
 
        Plugs[plug].countdown = MAX_LIFE; // New lease in life.
    }
@@ -273,6 +290,7 @@ static void houselights_plugs_controlled
    plug->status = 'i';
 
    houselights_plugs_discovery (plug->url, data, length);
+   plug->pending = time(0);
 }
 
 static void houselights_plugs_submit (int plug) {
@@ -339,6 +357,7 @@ void houselights_plugs_periodic (time_t now) {
 
     static time_t starting = 0;
     static time_t latestdiscovery = 0;
+    int i;
 
     if (!now) { // This is a manual reset (force a discovery refresh)
         starting = 0;
@@ -346,6 +365,13 @@ void houselights_plugs_periodic (time_t now) {
         return;
     }
     if (starting == 0) starting = now;
+
+    for (i = 0; i < PlugsCount; ++i) {
+        if (Plugs[i].pending <= 0) continue;
+        if (now > Plugs[i].pending) {
+           houselights_plugs_scan_server ("control", 0, Plugs[i].url);
+        }
+    }
 
     // Scan every 15s for the first 2 minutes, then slow down to every 30mn.
     // The fast start is to make the whole network recover fast from
@@ -360,7 +386,6 @@ void houselights_plugs_periodic (time_t now) {
     // refresh. This way we never walk the cache while doing discovery.
     //
     DEBUG ("Reset providers cache\n");
-    int i;
     for (i = 0; i < ProvidersCount; ++i) {
         if (Providers[i]) free(Providers[i]);
         Providers[i] = 0;

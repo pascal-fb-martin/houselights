@@ -91,6 +91,8 @@ static int       PlugsCount = 0;
 
 #define PLUG_CONTROL_EXPIRATION (8*60*60) // do not set a light on for longer
 
+static void houselights_plugs_submit (int plug);
+
 static int houselights_plugs_search (const char *name) {
     int i;
     int free = -1;
@@ -119,6 +121,135 @@ static int houselights_plugs_search (const char *name) {
     return free;
 }
 
+static void houselights_plugs_discovery (const char *provider,
+                                         char *data, int length) {
+
+   ParserToken tokens[100];
+   int  innerlist[100];
+   char path[256];
+   int  count = 100;
+   int  i;
+
+   // Analyze the answer and retrieve the control points matching our plugs.
+   const char *error = echttp_json_parse (data, tokens, &count);
+   if (error) {
+       houselog_trace
+           (HOUSE_FAILURE, provider, "JSON syntax error, %s", error);
+       return;
+   }
+   if (count <= 0) {
+       houselog_trace (HOUSE_FAILURE, provider, "no data");
+       return;
+   }
+
+   int controls = echttp_json_search (tokens, ".control.status");
+   if (controls <= 0) {
+       houselog_trace (HOUSE_FAILURE, provider, "no plug data");
+       return;
+   }
+
+   int n = tokens[controls].length;
+   if (n <= 0) {
+       houselog_trace (HOUSE_FAILURE, provider, "empty plug data");
+       return;
+   }
+
+   error = echttp_json_enumerate (tokens+controls, innerlist);
+   if (error) {
+       houselog_trace (HOUSE_FAILURE, path, "%s", error);
+       return;
+   }
+
+   for (i = 0; i < n; ++i) {
+       ParserToken *inner = tokens + controls + innerlist[i];
+       int plug = houselights_plugs_search (inner->key);
+       if (plug < 0) continue;
+
+       if (strcmp (Plugs[plug].url, provider)) {
+           snprintf (Plugs[plug].url, sizeof(Plugs[plug].url), provider);
+           if (Plugs[plug].status == 'u') Plugs[plug].status = 'i';
+
+           DEBUG ("Plug %s discovered on %s\n",
+                  Plugs[plug].name, Plugs[plug].url);
+           houselog_event ("PLUG", Plugs[plug].name, "ROUTE",
+                           "TO %s", Plugs[plug].url);
+
+           // If we discovered a plug for which there is a pending control,
+           // This is the best time to submit it.
+           //
+           if (Plugs[plug].deadline > time(0)) {
+               houselights_plugs_submit (plug);
+           }
+       }
+
+       int state = echttp_json_search (inner, ".state");
+       if (state >= 0)
+           strncpy (Plugs[plug].state,
+                    inner[state].value.string, sizeof(Plugs[0].state));
+
+       Plugs[plug].countdown = MAX_LIFE; // New lease in life.
+   }
+}
+
+static void houselights_plugs_discovered
+               (void *origin, int status, char *data, int length) {
+
+   const char *provider = (const char *) origin;
+
+   status = echttp_redirected("GET");
+   if (!status) {
+       echttp_submit (0, 0, houselights_plugs_discovered, origin);
+       return;
+   }
+
+   if (status != 200) {
+       houselog_trace (HOUSE_FAILURE, provider, "HTTP error %d", status);
+       return;
+   }
+   houselights_plugs_discovery (provider, data, length);
+}
+
+static void houselights_plugs_scan_server
+                (const char *service, void *context, const char *provider) {
+
+    char url[256];
+
+    Providers[ProvidersCount++] = strdup(provider); // Keep the string.
+
+    snprintf (url, sizeof(url), "%s/status", provider);
+
+    DEBUG ("Attempting discovery at %s\n", url);
+    const char *error = echttp_client ("GET", url);
+    if (error) {
+        houselog_trace (HOUSE_FAILURE, provider, "%s", error);
+        return;
+    }
+    echttp_submit (0, 0, houselights_plugs_discovered, (void *)provider);
+}
+
+static void houselights_plugs_prune (time_t now) {
+
+    int i;
+
+    for (i = PlugsCount-1; i >= 0; --i) {
+        if (Plugs[i].deadline > now) continue; // Do not prune pending items.
+        Plugs[i].deadline = 0;
+        if (Plugs[i].name) {
+            if (--(Plugs[i].countdown) <= 0) {
+                 DEBUG ("Plug %s on %s pruned\n", Plugs[i].name, Plugs[i].url);
+                 houselog_event
+                     ("PLUG", Plugs[i].name, "PRUNE", "FROM %s", Plugs[i].url);
+                free(Plugs[i].name);
+                Plugs[i].name = 0;
+                Plugs[i].url[0] = 0;
+            }
+        }
+        if (!Plugs[i].name) {
+            if (i == PlugsCount-1) PlugsCount -= 1;
+        }
+    }
+}
+
 static void houselights_plugs_controlled
                (void *origin, int status, char *data, int length) {
 
@@ -140,6 +271,8 @@ static void houselights_plugs_controlled
    }
    plug->deadline = 0;
    plug->status = 'i';
+
+   houselights_plugs_discovery (plug->url, data, length);
 }
 
 static void houselights_plugs_submit (int plug) {
@@ -199,127 +332,6 @@ static void houselights_plugs_set (const char *name,
             Plugs[plug].deadline = now + pulse;
         }
         if (Plugs[plug].url[0]) houselights_plugs_submit (plug);
-    }
-}
-
-static void houselights_plugs_discovered
-               (void *origin, int status, char *data, int length) {
-
-   const char *provider = (const char *) origin;
-   ParserToken tokens[100];
-   int  innerlist[100];
-   char path[256];
-   int  count = 100;
-   int  i;
-
-   status = echttp_redirected("GET");
-   if (!status) {
-       echttp_submit (0, 0, houselights_plugs_discovered, origin);
-       return;
-   }
-
-   if (status != 200) {
-       houselog_trace (HOUSE_FAILURE, provider, "HTTP error %d", status);
-       return;
-   }
-
-   // Analyze the answer and retrieve the control points matching our plugs.
-   const char *error = echttp_json_parse (data, tokens, &count);
-   if (error) {
-       houselog_trace
-           (HOUSE_FAILURE, provider, "JSON syntax error, %s", error);
-       return;
-   }
-   if (count <= 0) {
-       houselog_trace (HOUSE_FAILURE, provider, "no data");
-       return;
-   }
-
-   int controls = echttp_json_search (tokens, ".control.status");
-   if (controls <= 0) {
-       houselog_trace (HOUSE_FAILURE, provider, "no plug data");
-       return;
-   }
-
-   int n = tokens[controls].length;
-   if (n <= 0) {
-       houselog_trace (HOUSE_FAILURE, provider, "empty plug data");
-       return;
-   }
-
-   error = echttp_json_enumerate (tokens+controls, innerlist);
-   if (error) {
-       houselog_trace (HOUSE_FAILURE, path, "%s", error);
-       return;
-   }
-
-   for (i = 0; i < n; ++i) {
-       ParserToken *inner = tokens + controls + innerlist[i];
-       int plug = houselights_plugs_search (inner->key);
-       if (plug < 0) continue;
-       if (strcmp (Plugs[plug].url, provider)) {
-           snprintf (Plugs[plug].url, sizeof(Plugs[plug].url), provider);
-           if (Plugs[plug].status == 'u') Plugs[plug].status = 'i';
-
-           DEBUG ("Plug %s discovered on %s\n",
-                  Plugs[plug].name, Plugs[plug].url);
-           houselog_event ("PLUG", Plugs[plug].name, "ROUTE",
-                           "TO %s", Plugs[plug].url);
-
-           int state = echttp_json_search (inner, ".state");
-           if (state >= 0)
-               strncpy (Plugs[plug].state,
-                        inner[state].value.string, sizeof(Plugs[0].state));
-
-           // If we discovered a plug for which there is a pending control,
-           // This is the best time to submit it.
-           //
-           if (Plugs[plug].deadline > time(0)) {
-               houselights_plugs_submit (plug);
-           }
-       }
-       Plugs[plug].countdown = MAX_LIFE; // New lease in life.
-   }
-}
-
-static void houselights_plugs_scan_server
-                (const char *service, void *context, const char *provider) {
-
-    char url[256];
-
-    Providers[ProvidersCount++] = strdup(provider); // Keep the string.
-
-    snprintf (url, sizeof(url), "%s/status", provider);
-
-    DEBUG ("Attempting discovery at %s\n", url);
-    const char *error = echttp_client ("GET", url);
-    if (error) {
-        houselog_trace (HOUSE_FAILURE, provider, "%s", error);
-        return;
-    }
-    echttp_submit (0, 0, houselights_plugs_discovered, (void *)provider);
-}
-
-static void houselights_plugs_prune (time_t now) {
-
-    int i;
-
-    for (i = PlugsCount-1; i >= 0; --i) {
-        if (Plugs[i].deadline > now) continue; // Do not prune pending items.
-        Plugs[i].deadline = 0;
-        if (Plugs[i].name) {
-            if (--(Plugs[i].countdown) <= 0) {
-                 DEBUG ("Plug %s on %s pruned\n", Plugs[i].name, Plugs[i].url);
-                 houselog_event
-                     ("PLUG", Plugs[i].name, "PRUNE", "FROM %s", Plugs[i].url);
-                free(Plugs[i].name);
-                Plugs[i].name = 0;
-                Plugs[i].url[0] = 0;
-            }
-        }
-        if (!Plugs[i].name) {
-            if (i == PlugsCount-1) PlugsCount -= 1;
-        }
     }
 }
 

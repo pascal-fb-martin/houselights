@@ -210,7 +210,9 @@ static void houselights_plugs_discovery (const char *provider,
        int command = echttp_json_search (inner, ".command");
        if (command >= 0) {
            if (strcmp (Plugs[plug].state, inner[command].value.string)) {
-               Plugs[plug].pending = now;
+               if (strcmp (Plugs[plug].state, "silent")) {
+                   Plugs[plug].pending = now;
+               }
            }
        }
 
@@ -384,17 +386,17 @@ void houselights_plugs_periodic (time_t now) {
         }
     }
 
-    // Scan every 15s for the first 2 minutes, then slow down to every 30mn.
+    // Scan every 15s for the first 2 minutes, then slow down to every minute.
     // The fast start is to make the whole network recover fast from
     // an outage, when we do not know in which order the systems start.
     // Later on, there is no need to create more traffic.
     //
     if (now <= latestdiscovery + 15) return;
-    if (now <= latestdiscovery + 1800 && now >= starting + 120) return;
+    if (now <= latestdiscovery + 60 && now >= starting + 120) return;
     latestdiscovery = now;
 
     // Rebuild the list of control servers, and then launch a discovery
-    // refresh. This way we never walk the cache while doing discovery.
+    // refresh. This way we don't keep dead providers.
     //
     DEBUG ("Reset providers cache\n");
     for (i = 0; i < ProvidersCount; ++i) {

@@ -73,6 +73,7 @@ static int   ProvidersCount = 0;
 typedef struct {
     char *name;
     const char *commanded;
+    char state[8];
     int countdown;
     int pulse;
     time_t deadline;
@@ -108,6 +109,7 @@ static int houselights_plugs_search (const char *name) {
     Plugs[free].name = strdup(name);
     Plugs[free].countdown = MAX_LIFE;
     Plugs[free].commanded = 0;
+    Plugs[free].state[0] = 0;
     Plugs[free].pulse = 0;
     Plugs[free].pulsed = 0;
     Plugs[free].manual = 0;
@@ -264,6 +266,11 @@ static void houselights_plugs_discovered
            houselog_event ("PLUG", Plugs[plug].name, "ROUTE",
                            "TO %s", Plugs[plug].url);
 
+           int state = echttp_json_search (inner, ".state");
+           if (state >= 0)
+               strncpy (Plugs[plug].state,
+                        inner[state].value.string, sizeof(Plugs[0].state));
+
            // If we discovered a plug for which there is a pending control,
            // This is the best time to submit it.
            //
@@ -400,8 +407,8 @@ int houselights_plugs_status (char *buffer, int size) {
             p[0] = 0;
 
         cursor += snprintf (buffer+cursor, size-cursor,
-                            "%s{\"name\":\"%s\",\"state\":\"%c\"%s%s}",
-                            prefix, Plugs[i].name, Plugs[i].status, s, p);
+                            "%s{\"name\":\"%s\",\"status\":\"%c\",\"state\":\"%s\"%s%s}",
+                            prefix, Plugs[i].name, Plugs[i].status, Plugs[i].state, s, p);
         if (cursor >= size) goto overflow;
         prefix = ",";
     }

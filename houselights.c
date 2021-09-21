@@ -37,7 +37,6 @@
 
 #include "echttp.h"
 #include "echttp_cors.h"
-// #include "echttp_json.h"
 #include "echttp_static.h"
 
 #include "houseportalclient.h"
@@ -54,6 +53,22 @@ static char HostName[256];
 
 static const char *lights_status (const char *method, const char *uri,
                                   const char *data, int length) {
+    static char buffer[65537];
+    int cursor = 0;
+
+    cursor += snprintf (buffer, sizeof(buffer),
+                        "{\"host\":\"%s\",\"proxy\":\"%s\",\"timestamp\":%d,"
+                            "\"lights\":{",
+                        HostName, houseportal_server(), (long)time(0));
+
+    cursor += houselights_plugs_status (buffer+cursor, sizeof(buffer)-cursor);
+    cursor += snprintf (buffer+cursor, sizeof(buffer)-cursor, "}}");
+    echttp_content_type_json ();
+    return buffer;
+}
+
+static const char *lights_schedule (const char *method, const char *uri,
+                                    const char *data, int length) {
     static char buffer[65537];
     int cursor = 0;
 
@@ -102,7 +117,7 @@ static const char *lights_set (const char *method, const char *uri,
 
 static const char *lights_save (const char *method, const char *uri,
                                   const char *data, int length) {
-    const char *text = lights_status (method, uri, data, length);
+    const char *text = lights_schedule (method, uri, data, length);
     houselights_config_save (text);
     return text;
 }
@@ -211,6 +226,7 @@ int main (int argc, const char **argv) {
     echttp_cors_allow_method("GET");
     echttp_protect (0, lights_protect);
 
+    echttp_route_uri ("/lights/schedule", lights_schedule);
     echttp_route_uri ("/lights/status", lights_status);
     echttp_route_uri ("/lights/set",    lights_set);
     echttp_route_uri ("/lights/enable", lights_enable);

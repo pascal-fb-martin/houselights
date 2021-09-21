@@ -110,7 +110,7 @@ function lightsRefresh (request) {
     if (request)
         command.open("GET", request);
     else
-        command.open("GET", "/lights/status");
+        command.open("GET", "/lights/schedule");
     command.onreadystatechange = function () {
         if (command.readyState === 4 && command.status === 200) {
             var response = JSON.parse(command.responseText);
@@ -122,7 +122,7 @@ function lightsRefresh (request) {
 
 function lightsConfig () {
     var command = new XMLHttpRequest();
-    command.open("GET", "/lights/status");
+    command.open("GET", "/lights/schedule");
     command.onreadystatechange = function () {
         if (command.readyState === 4 && command.status === 200) {
             var response = JSON.parse(command.responseText);
@@ -180,6 +180,7 @@ window.onload = function() {
    <tr>
    <td><a id="portal" href="/index.html">Portal</a></td>
    <td><span>Schedules</span></td>
+   <td><a href="/lights/control.html">Control</a></td>
    <td><a href="/lights/events.html">Events</a></td>
    </tr>
    </table>

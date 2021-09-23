@@ -401,7 +401,9 @@ void houselights_plugs_periodic (time_t now) {
     for (i = 0; i < PlugsCount; ++i) {
         if (Plugs[i].url[0] == 0) continue;
         if (houselights_plugs_pending(i)) {
-            houselights_plugs_scan_server ("control", 0, Plugs[i].url);
+            if (now > latestdiscovery + 2) {
+                latestdiscovery = 0; // Force a discovery ever 2 seconds.
+            }
         }
     }
 
@@ -409,6 +411,8 @@ void houselights_plugs_periodic (time_t now) {
     // The fast start is to make the whole network recover fast from
     // an outage, when we do not know in which order the systems start.
     // Later on, there is no need to create more traffic.
+    // The exception is when there are control pending: we then need a faster
+    // refresh because we expect changes.
     //
     if (now <= latestdiscovery + 15) return;
     if (now <= latestdiscovery + 60 && now >= starting + 120) return;

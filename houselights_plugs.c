@@ -398,11 +398,16 @@ void houselights_plugs_periodic (time_t now) {
     }
     if (starting == 0) starting = now;
 
-    for (i = 0; i < PlugsCount; ++i) {
-        if (Plugs[i].url[0] == 0) continue;
-        if (houselights_plugs_pending(i)) {
-            if (now > latestdiscovery + 2) {
-                latestdiscovery = 0; // Force a discovery ever 2 seconds.
+    if (now >= latestdiscovery + 2) {
+        for (i = 0; i < PlugsCount; ++i) {
+            if (Plugs[i].url[0] == 0) continue;
+            if (houselights_plugs_pending(i)) {
+                // Force a discovery ever 2 seconds, but not immediately
+                // after the command.
+                if (now > Plugs[i].requested) {
+                    latestdiscovery = 0;
+                    break;
+                }
             }
         }
     }

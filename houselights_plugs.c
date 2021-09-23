@@ -24,7 +24,8 @@
  *
  * This module handles lighting plugs, including:
  * - Run periodic discoveries to find which server controls each plug.
- * - turn each plug on or off as requested.
+ * - Turn each plug on or off as requested. The requestor may be the
+ *   schedule function, or a manual request from the outside.
  *
  * This module is not configured by the user: it learns about a plug when
  * the other modules want to control it. Its job, really, is to find what
@@ -41,7 +42,7 @@
  *
  * void houselights_plugs_periodic (time_t now);
  *
- *    The periodic function that runs the lights.
+ *    The periodic function that runs the lights discovery logic.
  *
  * int houselights_plugs_status (char *buffer, int size);
  *
@@ -76,10 +77,9 @@ typedef struct {
     char state[8];
     int countdown;
     int pulse;
-    time_t pending;
+    time_t requested;
     time_t deadline;
     char manual;
-    char pulsed;
     char status; // u: unmapped, i: idle, a: active (pending).
     char url[256];
 } LightPlug;
@@ -90,7 +90,8 @@ typedef struct {
 static LightPlug Plugs[MAX_PLUGS];
 static int       PlugsCount = 0;
 
-#define PLUG_CONTROL_EXPIRATION (8*60*60) // do not set a light on for longer
+#define PLUG_ON_LIMIT (8*60*60)    // do not set a light on for longer
+#define PLUG_CONTROL_EXPIRATION 60 // Do not retry for longer than this.
 
 static void houselights_plugs_submit (int plug);
 
@@ -112,13 +113,13 @@ static int houselights_plugs_search (const char *name) {
     Plugs[free].name = strdup(name);
     Plugs[free].countdown = MAX_LIFE;
     Plugs[free].commanded = 0;
+    Plugs[free].requested = 0;
+    Plugs[free].deadline = 0;
     Plugs[free].state[0] = 0;
     Plugs[free].pulse = 0;
-    Plugs[free].pulsed = 0;
     Plugs[free].manual = 0;
     Plugs[free].status = 'u';
     Plugs[free].url[0] = 0;
-    Plugs[free].pending = 0;
 
     return free;
 }
@@ -131,6 +132,21 @@ static void houselights_plugs_provider_keep (const char *provider) {
     if (ProvidersCount >= MAX_PROVIDER) --ProvidersCount; // Avoid overflow.
 
     Providers[ProvidersCount++] = strdup(provider); // Keep the string.
+}
+
+static int houselights_plugs_pending (int plug) {
+
+    // Find all the cases when we would not need or want to issue a control.
+    //
+    time_t now = time(0);
+    if (Plugs[plug].requested + PLUG_CONTROL_EXPIRATION < now) return 0;
+    if ((Plugs[plug].deadline > 0) && (Plugs[plug].deadline <= now)) return 0;
+    if (!Plugs[plug].commanded) return 0;
+    if (!Plugs[plug].state) return 0;
+    if (!strcmp (Plugs[plug].state, Plugs[plug].commanded)) return 0;
+    if (!strcmp (Plugs[plug].state, "silent")) return 0;
+
+    return 1; // No reason for not submitting a control.
 }
 
 static void houselights_plugs_discovery (const char *provider,
@@ -184,6 +200,16 @@ static void houselights_plugs_discovery (const char *provider,
        int plug = houselights_plugs_search (inner->key);
        if (plug < 0) continue;
 
+       int state = echttp_json_search (inner, ".state");
+       if (state >= 0) {
+           if (strcmp (Plugs[plug].state, inner[state].value.string)) {
+               strncpy (Plugs[plug].state,
+                        inner[state].value.string, sizeof(Plugs[0].state));
+               houselog_event ("PLUG", Plugs[plug].name, "CHANGED",
+                               "TO %s", Plugs[plug].state);
+           }
+       }
+
        if (strcmp (Plugs[plug].url, provider)) {
            snprintf (Plugs[plug].url, sizeof(Plugs[plug].url), provider);
            if (Plugs[plug].status == 'u') Plugs[plug].status = 'i';
@@ -196,28 +222,10 @@ static void houselights_plugs_discovery (const char *provider,
            // If we discovered a plug for which there is a pending control,
            // This is the best time to submit it.
            //
-           if (Plugs[plug].deadline > time(0)) {
+           if (houselights_plugs_pending (plug)) {
+               houselog_event ("PLUG", Plugs[plug].name, "RETRY",
+                               "%s", Plugs[plug].commanded);
                houselights_plugs_submit (plug);
-           }
-       }
-
-       int state = echttp_json_search (inner, ".state");
-       if (state >= 0) {
-           if (strcmp (Plugs[plug].state, inner[state].value.string)) {
-               strncpy (Plugs[plug].state,
-                        inner[state].value.string, sizeof(Plugs[0].state));
-               houselog_event ("PLUG", Plugs[plug].name, "CHANGED",
-                               "TO %s", Plugs[plug].state);
-           }
-       }
-
-       Plugs[plug].pending = 0;
-       int command = echttp_json_search (inner, ".command");
-       if (command >= 0) {
-           if (strcmp (Plugs[plug].state, inner[command].value.string)) {
-               if (strcmp (Plugs[plug].state, "silent")) {
-                   Plugs[plug].pending = now;
-               }
            }
        }
 
@@ -266,8 +274,7 @@ static void houselights_plugs_prune (time_t now) {
     int i;
 
     for (i = PlugsCount-1; i >= 0; --i) {
-        if (Plugs[i].deadline > now) continue; // Do not prune pending items.
-        Plugs[i].deadline = 0;
+        if (houselights_plugs_pending (i)) continue;
         if (Plugs[i].name) {
             if (--(Plugs[i].countdown) <= 0) {
                  DEBUG ("Plug %s on %s pruned\n", Plugs[i].name, Plugs[i].url);
@@ -303,32 +310,20 @@ static void houselights_plugs_controlled
            return;
        }
    }
-   plug->deadline = 0;
    plug->status = 'i';
 
    houselights_plugs_discovery (plug->url, data, length);
-   plug->pending = time(0);
 }
 
 static void houselights_plugs_submit (int plug) {
 
+    int pulse = 0;
     time_t now = time(0);
-    if ((now >= Plugs[plug].deadline) || (!Plugs[plug].commanded)) {
-        Plugs[plug].deadline = 0;
-        return;
-    }
-
-    int pulse = (int) (Plugs[plug].deadline - now);
-    if (Plugs[plug].manual) { // Scheduled controls are logged by the scheduler
-        if (Plugs[plug].pulsed) {
-            houselog_event ("PLUG", Plugs[plug].name, "COMMANDED",
-                            "%s FOR %d SECONDS", Plugs[plug].commanded, pulse);
-        } else {
-            houselog_event ("PLUG", Plugs[plug].name, "COMMANDED",
-                            "%s", Plugs[plug].commanded);
-        }
-    }
     static char url[256];
+
+    if (Plugs[plug].deadline > 0)
+        pulse = (int) (Plugs[plug].deadline - now);
+
     snprintf (url, sizeof(url), "%s/set?point=%s&state=%s&pulse=%d",
               Plugs[plug].url,
               Plugs[plug].name,
@@ -348,26 +343,46 @@ static void houselights_plugs_set (const char *name,
                                    const char *state, int pulse, int manual) {
 
     int plug = houselights_plugs_search (name);
+    if (plug < 0) return;
 
-    if (plug >= 0) {
-        time_t now = time(0);
-        DEBUG ("%ld: Start plug %s for %d seconds (%s)\n",
-               (long)now, Plugs[plug].name, pulse, manual?"manual":"scheduled");
+    time_t now = time(0);
+    DEBUG ("%ld: Start plug %s for %d seconds (%s)\n",
+           (long)now, Plugs[plug].name, pulse, manual?"manual":"scheduled");
 
-        Plugs[plug].commanded = state;
-        Plugs[plug].manual = manual;
-        if (Plugs[plug].status == 'i') Plugs[plug].status = 'a';
+    Plugs[plug].requested = now;
+    Plugs[plug].commanded = state;
+    Plugs[plug].manual = manual;
+    if (Plugs[plug].status == 'i') Plugs[plug].status = 'a';
 
-        if (pulse <= 0) {
-            // Never turn a light on forever. Do not waste energy.
-            Plugs[plug].pulsed = 0;
-            Plugs[plug].deadline = now + PLUG_CONTROL_EXPIRATION;
-        } else {
-            Plugs[plug].pulsed = 1;
-            Plugs[plug].deadline = now + pulse;
-        }
-        if (Plugs[plug].url[0]) houselights_plugs_submit (plug);
+    if (pulse <= 0) {
+        Plugs[plug].deadline = 0;
+        // Never turn a light on forever. Do not waste energy.
+        if (!strcmp (state, "on"))
+            Plugs[plug].deadline = now + PLUG_ON_LIMIT;
+    } else {
+        Plugs[plug].deadline = now + pulse;
     }
+
+    if (manual) { // Scheduled controls are logged by the scheduler
+        if (pulse) {
+            houselog_event ("PLUG", Plugs[plug].name, "CONTROLLED",
+                            "%s FOR %d SECONDS", Plugs[plug].commanded, pulse);
+        } else {
+            houselog_event ("PLUG", Plugs[plug].name, "CONTROLLED",
+                            "%s", Plugs[plug].commanded);
+        }
+    }
+    if (Plugs[plug].url[0]) houselights_plugs_submit (plug);
+}
+
+void houselights_plugs_on (const char *name, int pulse, int manual) {
+
+    houselights_plugs_set (name, "on", pulse, manual);
+}
+
+void houselights_plugs_off (const char *name, int manual) {
+
+    houselights_plugs_set (name, "off", 0, manual);
 }
 
 void houselights_plugs_periodic (time_t now) {
@@ -385,8 +400,7 @@ void houselights_plugs_periodic (time_t now) {
 
     for (i = 0; i < PlugsCount; ++i) {
         if (Plugs[i].url[0] == 0) continue;
-        if (Plugs[i].pending <= 0) continue;
-        if (now > Plugs[i].pending) {
+        if (houselights_plugs_pending(i)) {
             houselights_plugs_scan_server ("control", 0, Plugs[i].url);
         }
     }
@@ -412,16 +426,6 @@ void houselights_plugs_periodic (time_t now) {
     DEBUG ("Proceeding with discovery\n");
     housediscovered ("control", 0, houselights_plugs_scan_server);
     houselights_plugs_prune (now);
-}
-
-void houselights_plugs_on (const char *name, int pulse, int manual) {
-
-    houselights_plugs_set (name, "on", pulse, manual);
-}
-
-void houselights_plugs_off (const char *name, int manual) {
-
-    houselights_plugs_set (name, "off", 0, manual);
 }
 
 int houselights_plugs_status (char *buffer, int size) {

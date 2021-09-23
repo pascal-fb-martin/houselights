@@ -299,13 +299,13 @@ void houselights_schedule_periodic (time_t now) {
         if (active) {
             houselights_plugs_on (Schedules[i].plug, 65, 0);
             if (Schedules[i].state != 'a') {
-                houselog_event ("PLUG", Schedules[i].plug, "ON",
-                                "for %d minutes", duration);
+                houselog_event ("PLUG", Schedules[i].plug, "SCHEDULED",
+                                "ON FOR %d MINUTES", duration);
                 Schedules[i].state = 'a';
             }
         } else {
             if (Schedules[i].state != 'i') {
-                houselog_event ("PLUG", Schedules[i].plug, "OFF", "");
+                houselog_event ("PLUG", Schedules[i].plug, "SCHEDULED", "OFF");
                 Schedules[i].state = 'i';
             }
         }

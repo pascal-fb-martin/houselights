@@ -7,6 +7,9 @@ function lightsUpdateStatus (response) {
 
     document.getElementById('portal').href = 'http://'+response.proxy+'/index.html';
 
+    document.getElementsByTagName('title')[0].innerHTML =
+        response.host+' - Ligths Control';
+
     var plugs = response.lights.plugs;
     for (var i = 0; i < plugs.length; i++) {
         var plug = plugs[i];

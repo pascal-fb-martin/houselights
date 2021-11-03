@@ -24,6 +24,9 @@ function lightsShow (response) {
    document.getElementById('portal').href =
        'http://'+response.proxy+'/index.html';
 
+   document.getElementsByTagName('title')[0].innerHTML =
+       response.host+' - Lights Control';
+
    var schedules = response.lights.schedules;
    var addline = document.getElementById ('lightAddLine');
    var schlist = addline.parentNode;

@@ -100,7 +100,7 @@ const char *houselights_config_load (int argc, const char **argv) {
 
 const char *houselights_config_save (const char *text) {
 
-    int fd = open (ConfigFile, O_WRONLY+O_CREAT, 0777);
+    int fd = open (ConfigFile, O_WRONLY|O_TRUNC|O_CREAT, 0777);
     if (fd >= 0) {
         write (fd, text, strlen(text));
         close (fd);

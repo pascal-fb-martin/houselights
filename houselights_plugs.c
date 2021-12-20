@@ -463,10 +463,12 @@ int houselights_plugs_status (char *buffer, int size) {
         char s[512];
         char p[256];
 
+        if (!Plugs[i].name) continue; // Ignore obsolete entries.
+
         if (Plugs[i].url[0])
             snprintf (s, sizeof(s), ",\"url\":\"%s\"", Plugs[i].url);
         else
-            s[0] = 0;
+            s[0] = 0; // URL is not yet known.
 
         if (Plugs[i].deadline && Plugs[i].commanded)
             snprintf (p, sizeof(p), ",\"command\":\"%s\",\"expires\":%ld",

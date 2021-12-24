@@ -65,10 +65,10 @@
 #include <echttp_json.h>
 
 #include "houselog.h"
+#include "houseconfig.h"
 #include "housediscover.h"
 
 #include "houselights_plugs.h"
-#include "houselights_config.h"
 #include "houselights_schedule.h"
 
 #define DEBUG if (echttp_isdebug()) printf
@@ -150,8 +150,8 @@ static int houselights_schedule_adjust (LightTime *t) {
 const char *houselights_schedule_load (int argc, const char *argv[]) {
 
     int i;
-    const char *mode = houselights_config_string (0, ".lights.mode");
-    int schedules = houselights_config_array(0, ".lights.schedules");
+    const char *mode = houseconfig_string (0, ".lights.mode");
+    int schedules = houseconfig_array(0, ".lights.schedules");
 
     if (mode && strcmp (mode, "auto")) {
         ScheduleDisabled = 1;
@@ -166,7 +166,7 @@ const char *houselights_schedule_load (int argc, const char *argv[]) {
     }
 
     if (schedules > 0) {
-        int count = houselights_config_array_length (schedules);
+        int count = houseconfig_array_length (schedules);
 
         if (echttp_isdebug()) printf ("Schedule: %d entries\n", count);
 
@@ -176,13 +176,13 @@ const char *houselights_schedule_load (int argc, const char *argv[]) {
         for (i = 0; i < count; ++i) {
             char path[128];
             snprintf (path, sizeof(path), "[%d]", i);
-            int item = houselights_config_object (schedules, path);
+            int item = houseconfig_object (schedules, path);
             if (item <= 0) continue;
-            const char *device = houselights_config_string (item, ".device");
-            const char *on = houselights_config_string (item, ".on");
-            const char *off = houselights_config_string (item, ".off");
+            const char *device = houseconfig_string (item, ".device");
+            const char *on = houseconfig_string (item, ".on");
+            const char *off = houseconfig_string (item, ".off");
             if (!device || !on || !off) continue;
-            int days = houselights_config_integer (item, ".days");
+            int days = houseconfig_integer (item, ".days");
             if (!days) days = 0x7f;
             houselights_schedule_add (device, on, off, days);
             if (echttp_isdebug()) printf ("  %s\n", device);

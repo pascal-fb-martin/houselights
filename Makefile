@@ -1,5 +1,5 @@
 
-OBJS= houselights_plugs.o houselights_config.o houselights_schedule.o houselights.o
+OBJS= houselights_plugs.o houselights_schedule.o houselights.o
 LIBOJS=
 
 SHARE=/usr/local/share/house

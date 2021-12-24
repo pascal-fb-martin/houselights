@@ -41,10 +41,10 @@
 
 #include "houseportalclient.h"
 #include "houselog.h"
+#include "houseconfig.h"
 #include "housediscover.h"
 
 #include "houselights_plugs.h"
-#include "houselights_config.h"
 #include "houselights_schedule.h"
 
 static int use_houseportal = 0;
@@ -118,7 +118,7 @@ static const char *lights_set (const char *method, const char *uri,
 static const char *lights_save (const char *method, const char *uri,
                                   const char *data, int length) {
     const char *text = lights_schedule (method, uri, data, length);
-    houselights_config_save (text);
+    houseconfig_update (text);
     return text;
 }
 
@@ -211,7 +211,8 @@ int main (int argc, const char **argv) {
     }
     houselog_initialize ("lights", argc, argv);
 
-    error = houselights_config_load (argc, argv);
+    houseconfig_default ("--config=lights");
+    error = houseconfig_load (argc, argv);
     if (error) {
         houselog_trace
             (HOUSE_FAILURE, "CONFIG", "Cannot load configuration: %s\n", error);

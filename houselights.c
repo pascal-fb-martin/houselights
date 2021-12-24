@@ -48,7 +48,6 @@
 #include "houselights_schedule.h"
 
 static int use_houseportal = 0;
-static char HostName[256];
 
 
 static const char *lights_status (const char *method, const char *uri,
@@ -59,7 +58,7 @@ static const char *lights_status (const char *method, const char *uri,
     cursor += snprintf (buffer, sizeof(buffer),
                         "{\"host\":\"%s\",\"proxy\":\"%s\",\"timestamp\":%d,"
                             "\"lights\":{",
-                        HostName, houseportal_server(), (long)time(0));
+                        houselog_host(), houseportal_server(), (long)time(0));
 
     cursor += houselights_plugs_status (buffer+cursor, sizeof(buffer)-cursor);
     cursor += snprintf (buffer+cursor, sizeof(buffer)-cursor, "}}");
@@ -75,7 +74,7 @@ static const char *lights_schedule (const char *method, const char *uri,
     cursor += snprintf (buffer, sizeof(buffer),
                         "{\"host\":\"%s\",\"proxy\":\"%s\",\"timestamp\":%d,"
                             "\"lights\":{",
-                        HostName, houseportal_server(), (long)time(0));
+                        houselog_host(), houseportal_server(), (long)time(0));
 
     cursor += houselights_schedule_status (buffer+cursor, sizeof(buffer)-cursor);
     cursor += snprintf (buffer+cursor, sizeof(buffer)-cursor, "}}");
@@ -200,8 +199,6 @@ int main (int argc, const char **argv) {
 
     signal(SIGPIPE, SIG_IGN);
 
-    gethostname (HostName, sizeof(HostName));
-
     echttp_default ("-http-service=dynamic");
 
     echttp_open (argc, argv);
@@ -239,7 +236,7 @@ int main (int argc, const char **argv) {
     echttp_background (&lights_background);
     housediscover_initialize (argc, argv);
 
-    houselog_event ("SERVICE", "lights", "START", "ON %s", HostName);
+    houselog_event ("SERVICE", "lights", "STARTED", "ON %s", houselog_host());
     echttp_loop();
 }
 

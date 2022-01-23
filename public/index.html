@@ -136,7 +136,7 @@ function lightsConfig () {
 }
 
 function lightsAdd () {
-    var device = document.getElementById("lightdevice").value;
+    var device = document.getElementById("lightdevice").value.replace(/ /g,'%20');
     var on = document.getElementById("lighton").value;
     var off = document.getElementById("lightoff").value;
     var days = 0;

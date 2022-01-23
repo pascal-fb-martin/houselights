@@ -13,8 +13,9 @@ function lightsUpdateStatus (response) {
     var plugs = response.lights.plugs;
     for (var i = 0; i < plugs.length; i++) {
         var plug = plugs[i];
-        var state = document.getElementById ('state-'+plug.name);
-        var button = document.getElementById ('button-'+plug.name);
+        var tag = plug.name.replace (/ /g,'-')
+        var state = document.getElementById ('state-'+tag);
+        var button = document.getElementById ('button-'+tag);
         if (plug.state == 'on') {
             state.innerHTML = 'ON';
             button.innerHTML = 'OFF';
@@ -45,7 +46,7 @@ function lightsStatus () {
 }
 
 function controlClick () {
-    var device = this.controlName;
+    var device = this.controlName.replace(/ /g,'%20');
     var state = this.controlState;
     var command = new XMLHttpRequest();
     command.open("GET", "/lights/set?device="+device+"&state="+state);
@@ -64,6 +65,7 @@ window.onload = function() {
       var plugs = response.lights.plugs;
       for (var i = 0; i < plugs.length; i++) {
            var plug = plugs[i];
+           var tag = plug.name.replace (/ /g,'-')
            var outer = document.createElement("tr");
 
            var inner = document.createElement("td");
@@ -75,7 +77,7 @@ window.onload = function() {
            inner = document.createElement("td");
            label = document.createElement("span");
            label.innerHTML = plug.state;
-           label.id = 'state-'+plug.name;
+           label.id = 'state-'+tag;
            inner.appendChild(label);
            outer.appendChild(inner);
 
@@ -83,7 +85,7 @@ window.onload = function() {
            var button = document.createElement("button");
            button.innerHTML = '(wait)';
            button.disabled = true;
-           button.id = 'button-'+plug.name;
+           button.id = 'button-'+tag;
            button.onclick = controlClick;
            button.controlName = plug.name;
            button.controlstate = 'on';

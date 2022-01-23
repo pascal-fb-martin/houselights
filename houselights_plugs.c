@@ -307,11 +307,12 @@ static void houselights_plugs_controlled
        if (plug->status != 'e') {
            houselog_trace (HOUSE_FAILURE, plug->name, "HTTP code %d", status);
            plug->status = 'e';
-           return;
        }
+       return;
    }
    plug->status = 'i';
 
+   if (!data) return;
    houselights_plugs_discovery (plug->url, data, length);
 }
 

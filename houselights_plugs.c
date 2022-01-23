@@ -320,14 +320,17 @@ static void houselights_plugs_submit (int plug) {
 
     int pulse = 0;
     time_t now = time(0);
+    char encoded[128];
     static char url[256];
 
     if (Plugs[plug].deadline > 0)
         pulse = (int) (Plugs[plug].deadline - now);
 
+    echttp_escape (Plugs[plug].name, encoded, sizeof(encoded));
+
     snprintf (url, sizeof(url), "%s/set?point=%s&state=%s&pulse=%d",
               Plugs[plug].url,
-              Plugs[plug].name,
+              encoded,
               Plugs[plug].commanded,
               pulse);
     const char *error = echttp_client ("GET", url);

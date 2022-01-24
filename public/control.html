@@ -3,6 +3,9 @@
 <head>
 <link rel=stylesheet type="text/css" href="/house.css" title="House">
 <script>
+
+var LightsCount = 0;
+
 function lightsUpdateStatus (response) {
 
     document.getElementById('portal').href = 'http://'+response.proxy+'/index.html';
@@ -34,17 +37,6 @@ function lightsUpdateStatus (response) {
     }
 }
 
-function lightsStatus () {
-    var command = new XMLHttpRequest();
-    command.open("GET", "/lights/status");
-    command.onreadystatechange = function () {
-        if (command.readyState === 4 && command.status === 200) {
-            lightsUpdateStatus (JSON.parse(command.responseText));
-        }
-    }
-    command.send(null);
-}
-
 function controlClick () {
     var device = this.controlName.replace(/ /g,'%20');
     var state = this.controlState;
@@ -58,58 +50,63 @@ function controlClick () {
     command.send(null);
 }
 
-window.onload = function() {
+function lightsShowStatus (response) {
+   var iolist = document.getElementsByClassName ('iolist')[0];
+   var plugs = response.lights.plugs;
+   for (var i = 0; i < plugs.length; i++) {
+        var plug = plugs[i];
+        var tag = plug.name.replace (/ /g,'-')
+        if (document.getElementById ('state-'+tag)) continue; // Already there.
 
-   function lightsShowStatus (response) {
-      var iolist = document.getElementsByClassName ('iolist')[0];
-      var plugs = response.lights.plugs;
-      for (var i = 0; i < plugs.length; i++) {
-           var plug = plugs[i];
-           var tag = plug.name.replace (/ /g,'-')
-           var outer = document.createElement("tr");
+        var outer = document.createElement("tr");
 
-           var inner = document.createElement("td");
-           var label = document.createElement("span");
-           label.innerHTML = plug.name;
-           inner.appendChild(label);
-           outer.appendChild(inner);
+        var inner = document.createElement("td");
+        var label = document.createElement("span");
+        label.innerHTML = plug.name;
+        inner.appendChild(label);
+        outer.appendChild(inner);
 
-           inner = document.createElement("td");
-           label = document.createElement("span");
-           label.innerHTML = plug.state;
-           label.id = 'state-'+tag;
-           inner.appendChild(label);
-           outer.appendChild(inner);
+        inner = document.createElement("td");
+        label = document.createElement("span");
+        label.innerHTML = plug.state;
+        label.id = 'state-'+tag;
+        inner.appendChild(label);
+        outer.appendChild(inner);
 
-           inner = document.createElement("td");
-           var button = document.createElement("button");
-           button.innerHTML = '(wait)';
-           button.disabled = true;
-           button.id = 'button-'+tag;
-           button.onclick = controlClick;
-           button.controlName = plug.name;
-           button.controlstate = 'on';
-           inner.appendChild(button);
-           outer.appendChild(inner);
+        inner = document.createElement("td");
+        var button = document.createElement("button");
+        button.innerHTML = '(wait)';
+        button.disabled = true;
+        button.id = 'button-'+tag;
+        button.onclick = controlClick;
+        button.controlName = plug.name;
+        button.controlstate = 'on';
+        inner.appendChild(button);
+        outer.appendChild(inner);
 
-           iolist.appendChild(outer);
-       }
-   }
+        iolist.appendChild(outer);
+    }
+}
 
-   function lightsConfig () {
-       var command = new XMLHttpRequest();
-       command.open("GET", "/lights/status");
-       command.onreadystatechange = function () {
-           if (command.readyState === 4 && command.status === 200) {
-               var response = JSON.parse(command.responseText);
+function lightsStatus () {
+    var command = new XMLHttpRequest();
+    command.open("GET", "/lights/status");
+    command.onreadystatechange = function () {
+        if (command.readyState === 4 && command.status === 200) {
+            var response = JSON.parse(command.responseText);
+            if (response.lights.plugs.length != LightsCount) {
                lightsShowStatus (response);
-               lightsUpdateStatus (response);
-               setInterval (lightsStatus, 1000);
-           }
-       }
-       command.send(null);
-   }
-   lightsConfig();
+               LightsCount = response.lights.plugs.length;
+            }
+            lightsUpdateStatus (response);
+        }
+    }
+    command.send(null);
+}
+
+window.onload = function() {
+   lightsStatus();
+   setInterval (lightsStatus, 1000);
 };
 </script>
 <head>

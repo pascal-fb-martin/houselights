@@ -56,6 +56,7 @@
 
 #include <echttp.h>
 #include <echttp_json.h>
+#include <echttp_encoding.h>
 
 #include "houselog.h"
 #include "housediscover.h"
@@ -326,7 +327,7 @@ static void houselights_plugs_submit (int plug) {
     if (Plugs[plug].deadline > 0)
         pulse = (int) (Plugs[plug].deadline - now);
 
-    echttp_escape (Plugs[plug].name, encoded, sizeof(encoded));
+    echttp_encoding_escape (Plugs[plug].name, encoded, sizeof(encoded));
 
     snprintf (url, sizeof(url), "%s/set?point=%s&state=%s&pulse=%d",
               Plugs[plug].url,

@@ -6,7 +6,8 @@
 # Required-Stop:   $network $remote_fs $syslog $houseportal
 # Default-Start:   2 3 4 5
 # Default-Stop: 
-# Short-Description: Start the House Light Control Daemon.
+# Short-Description: House light control and scheduling.
+# Description:       A web service that controls lights on a schedule or manually through a web interface
 ### END INIT INFO
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin

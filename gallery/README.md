@@ -4,7 +4,7 @@ This gallery is meant to give an idea of the HouseLights web UI. Note that House
 
 The HouseLights main web page is used to view and prepare the schedule for the automatic activation of lights:
 
-![HouseLights Main Page](https://raw.githubusercontent.com/pascal-fb-martin/houselights/main/gallery/main-page.png)
+![HouseLights Main Page](https://raw.githubusercontent.com/pascal-fb-martin/houselights/main/gallery/schedule-page.png)
 
 The top line is a navigation bar that gives access to the HouseLights major pages.
 

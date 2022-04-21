@@ -3,7 +3,9 @@ A web server to control lights
 ## Overview
 This web server controls lights based on a schedule. The actual control of the lights is provided by a "control" web service and the location for each light is retrieved based on the [HousePortal](https://github.com/pascal-fb-martin/houseportal) discovery mechanism.
 
-Examples of control web services compatible with the server  are [orvibo](https://github.com/pascal-fb-martin/orvibo) and [HouseRelays](https://github.com/pascal-fb-martin/houserelays).
+See the [gallery](https://github.com/pascal-fb-martin/houselights/blob/main/gallery/README.md) for a view of HouseLights' web UI.
+
+Examples of control web services compatible with the server  are [orvibo](https://github.com/pascal-fb-martin/orvibo), [HouseKasa](https://github.com/pascal-fb-martin/housekasa) and [HouseRelays](https://github.com/pascal-fb-martin/houserelays).
 
 ## Installation
 * Install the OpenSSL development package(s).

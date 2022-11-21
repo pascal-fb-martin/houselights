@@ -4,174 +4,117 @@
 <link rel=stylesheet type="text/css" href="/house.css" title="House">
 <script>
 
-function lightsShowStatus (response) {
+var LightsCount = 0;
+
+function lightsUpdateStatus (response) {
+
+    document.getElementById('portal').href = 'http://'+response.proxy+'/index.html';
+
+    document.getElementsByTagName('title')[0].innerHTML =
+        response.host+' - Ligths Control';
+
+    var plugs = response.lights.plugs;
+    for (var i = 0; i < plugs.length; i++) {
+        var plug = plugs[i];
+        var tag = plug.name.replace (/ /g,'-')
+        var button = document.getElementById ('button-'+tag);
+        if (plug.state == 'on') {
+            button.className = 'controlOn';
+            button.controlState = 'off';
+            button.disabled = false;
+        } else if (plug.state == 'off') {
+            button.className = 'controlOff';
+            button.controlState = 'on';
+            button.disabled = false;
+        } else {
+            button.className = 'controlDisabled';
+            button.disabled = true;
+        }
+    }
 }
 
-function lightsDelete () {
-    var id = this.controlId;
+function controlClick () {
+    var device = encodeURIComponent(this.controlName);
+    var state = this.controlState;
     var command = new XMLHttpRequest();
-    command.open("GET", "/lights/delete?id="+id);
+    command.open("GET", "/lights/set?device="+device+"&state="+state);
     command.onreadystatechange = function () {
         if (command.readyState === 4 && command.status === 200) {
-            lightsUpdate(JSON.parse(command.responseText));
+            lightsUpdateStatus (JSON.parse(command.responseText));
         }
     }
     command.send(null);
 }
 
-function lightsShow (response) {
-
-   document.getElementById('portal').href =
-       'http://'+response.proxy+'/index.html';
-
-   document.getElementsByTagName('title')[0].innerHTML =
-       response.host+' - Lights Control';
-
-   var schedules = response.lights.schedules;
-   var addline = document.getElementById ('lightAddLine');
-   var schlist = addline.parentNode;
-   for (var i = 0; i < schedules.length; i++) {
-        var schedule = schedules[i];
-        var outer = document.createElement("tr");
-        outer.className = 'removeThisLine';
-
-        var inner = document.createElement("td");
-        var label = document.createElement("span");
-        label.innerHTML = schedule.device;
-        inner.appendChild(label);
-        outer.appendChild(inner);
-
-        inner = document.createElement("td");
-        label = document.createElement("span");
-        switch (schedule.state) {
-            case 'i': label.innerHTML = 'Idle'; break;
-            case 'a': label.innerHTML = 'Active'; break;
-            default: label.innerHTML = 'Unknown'; break;
-        }
-        inner.appendChild(label);
-        outer.appendChild(inner);
-
-        inner = document.createElement("td");
-        label = document.createElement("span");
-        label.innerHTML = schedule.on;
-        inner.appendChild(label);
-        outer.appendChild(inner);
-
-        inner = document.createElement("td");
-        label = document.createElement("span");
-        label.innerHTML = schedule.off;
-        inner.appendChild(label);
-        outer.appendChild(inner);
-
-        var days = schedule.days;
-        for (var d = 0; d < 7; ++d) {
-            inner = document.createElement("td");
-            label = document.createElement("span");
-            if (days & 1) label.innerHTML = '&#x2713;';
-            else label.innerHTML = ' ';
-            inner.appendChild(label);
-            outer.appendChild(inner);
-            days /= 2;
-        }
-
-        inner = document.createElement("td");
-        var button = document.createElement("button");
-        button.innerHTML = 'Delete';
-        button.disabled = false;
-        button.onclick = lightsDelete;
-        button.controlId = schedule.id;
-        inner.appendChild(button);
-        outer.appendChild(inner);
-        schlist.insertBefore(outer, addline);
-   }
-   var label = "Enable Schedule";
-   var action = enableSchedule;
-   if (response.lights.mode == "auto") {
-        label = "Disable Schedule";
-        action = disableSchedule;
-   }
-   var buttons = document.getElementsByClassName ("modeButton");
-   for (var i = 0; i < buttons.length; i++) {
-       buttons[i].innerHTML = label;
-       buttons[i].disabled = false;
-       buttons[i].onclick = action;
-   }
-}
-
-function lightsUpdate (response) {
-   var addline = document.getElementById ('lightAddLine');
-   var schlist = addline.parentNode;
+function lightsShowStatus (response) {
+   var iolist = document.getElementById ('iolist');
    var remove = document.getElementsByClassName ('removeThisLine');
    while (remove.length > 0) {
-       schlist.removeChild(remove[0]);
+       iolist.removeChild(remove[0]);
    }
-   lightsShow(response);
+   var plugs = response.lights.plugs;
+   var columns = Math.ceil (window.innerWidth / 200);
+   var width = Math.floor (100 / columns);
+   var cursor = 0;
+   var firstline = true;
+   var outer = document.createElement("tr");
+   for (var i = 0; i < plugs.length; i++) {
+        var plug = plugs[i];
+        var tag = plug.name.replace (/ /g,'-')
+
+        if (cursor >= columns) {
+           outer.className = "removeThisLine";
+           iolist.appendChild(outer);
+           outer = document.createElement("tr");
+           cursor = 0;
+           firstline = false;
+        }
+        cursor += 1;
+
+        inner = document.createElement("td");
+        if (firstline) inner.style.width = width + '%';
+        var button = document.createElement("button");
+        button.innerHTML = plug.name;
+        button.disabled = true;
+        button.id = 'button-'+tag;
+        button.onclick = controlClick;
+        button.controlName = plug.name;
+        button.controlstate = 'on';
+        inner.appendChild(button);
+        outer.appendChild(inner);
+    }
+    outer.className = "removeThisLine";
+    iolist.appendChild(outer);
 }
 
-function lightsRefresh (request) {
+function lightsStatus () {
     var command = new XMLHttpRequest();
-    if (request)
-        command.open("GET", request);
-    else
-        command.open("GET", "/lights/schedule");
+    command.open("GET", "/lights/status");
     command.onreadystatechange = function () {
         if (command.readyState === 4 && command.status === 200) {
             var response = JSON.parse(command.responseText);
-            lightsUpdate(response);
+            if (response.lights.plugs.length != LightsCount) {
+               lightsShowStatus (response);
+               LightsCount = response.lights.plugs.length;
+            }
+            lightsUpdateStatus (response);
         }
     }
     command.send(null);
 }
 
-function lightsConfig () {
-    var command = new XMLHttpRequest();
-    command.open("GET", "/lights/schedule");
-    command.onreadystatechange = function () {
-        if (command.readyState === 4 && command.status === 200) {
-            var response = JSON.parse(command.responseText);
-            lightsShow(response);
-        }
-    }
-    command.send(null);
-}
-
-function lightsAdd () {
-    var device = document.getElementById("lightdevice").value.replace(/ /g,'%20');
-    var on = document.getElementById("lighton").value;
-    var off = document.getElementById("lightoff").value;
-    var days = 0;
-    if (document.getElementById("lightsun").checked) days += 1;
-    if (document.getElementById("lightmon").checked) days += 2;
-    if (document.getElementById("lighttue").checked) days += 4;
-    if (document.getElementById("lightwed").checked) days += 8;
-    if (document.getElementById("lightthu").checked) days += 16;
-    if (document.getElementById("lightfri").checked) days += 32;
-    if (document.getElementById("lightsat").checked) days += 64;
-    var command = new XMLHttpRequest();
-    command.open("GET", "/lights/add?device="+device+"&on="+on+"&off="+off+"&days="+days);
-    command.onreadystatechange = function () {
-        if (command.readyState === 4 && command.status === 200) {
-            var response = JSON.parse(command.responseText);
-            lightsUpdate(response);
-        }
-    }
-    command.send(null);
-}
-
-function doNothing() {}
-
-function enableSchedule () {
-    lightsRefresh ("/lights/enable");
-}
-
-function disableSchedule () {
-    lightsRefresh ("/lights/disable");
+function resizeButtons () {
+   if (LightsCount) {
+      LightsCount = 0;
+      lightsStatus();
+   }
 }
 
 window.onload = function() {
-   lightsConfig();
-   setInterval (lightsRefresh, 5000);
+   lightsStatus();
+   setInterval (lightsStatus, 1000);
 };
+window.onresize = resizeButtons;
 </script>
 <head>
    <title>Lights Control</title>
@@ -182,56 +125,15 @@ window.onload = function() {
    <table class="housetop">
    <tr>
    <td><a id="portal" href="/index.html">Portal</a></td>
-   <td><span>Schedules</span></td>
-   <td><a href="/lights/control.html">Control</a></td>
+   <td><span>Dashboard</span></td>
+   <td><a href="/lights/schedules.html">Schedules</a></td>
+   <td><a href="/lights/control.html">Controls</a></td>
    <td><a href="/lights/events.html">Events</a></td>
    </tr>
    </table>
    </td></tr>
    </table>
-   <table id="schlist" class="housewidetable" border="0">
-      <tr>
-         <th width="20%">DEVICE</th>
-         <th width="5%">STATE</th>
-         <th width="7%">ON</th>
-         <th width="7%">OFF</th>
-         <th width="5%">Sun</th>
-         <th width="5%">Mon</th>
-         <th width="5%">Tue</th>
-         <th width="5%">Wed</th>
-         <th width="5%">Thu</th>
-         <th width="5%">Fri</th>
-         <th width="5%">Sat</th>
-         <th width="18%"></th>
-      </tr>
-      <tr id="lightAddLine">
-         <td><input type="text" id="lightdevice" placeholder="Name"></td>
-         <td></td>
-         <td><input type="text" id="lighton" placeholder="HH:MM"></td>
-         <td><input type="text" id="lightoff" placeholder="HH:MM"></td>
-         <td><input type="checkbox" id="lightsun"></td>
-         <td><input type="checkbox" id="lightmon"></td>
-         <td><input type="checkbox" id="lighttue"></td>
-         <td><input type="checkbox" id="lightwed"></td>
-         <td><input type="checkbox" id="lightthu"></td>
-         <td><input type="checkbox" id="lightfri"></td>
-         <td><input type="checkbox" id="lightsat"></td>
-         <td><button onclick="lightsAdd()">Add</button></td>
-      </tr>
-      <tr>
-         <td></td>
-         <td></td>
-         <td></td>
-         <td></td>
-         <td></td>
-         <td></td>
-         <td></td>
-         <td></td>
-         <td></td>
-         <td></td>
-         <td></td>
-         <td><button class="modeButton" disabled onclick="doNothing()">Loading..</button></td>
-      </tr>
+   <table id="iolist" border="0">
    </table>
 </body>
 </html>

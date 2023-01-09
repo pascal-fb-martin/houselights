@@ -1,0 +1,12 @@
+[Unit]
+Description=the house light control and scheduling service
+After=network-online.target houseportal.service
+
+[Service]
+EnvironmentFile=-/etc/default/houselights
+EnvironmentFile=-/etc/sysconfig/houselights
+ExecStart=/usr/local/bin/houselights $OPTS
+
+[Install]
+WantedBy=multi-user.target
+

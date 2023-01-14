@@ -44,7 +44,7 @@ uninstall:
 	systemctl disable houselights
 	rm -f /usr/local/bin/houselights
 	rm -f /lib/systemd/system/houselights.service /etc/init.d/houselights
-	rm -f $(SHARE)/public/lights
+	rm -rf $(SHARE)/public/lights
 	systemctl daemon-reload
 
 purge: uninstall

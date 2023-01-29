@@ -20,3 +20,7 @@ You will need to have at least one control service installed and running.
 ## Configuration
 The lights schedule can be edited from the HouseLights web interface.
 
+## Panel
+
+The web interface includes a Panel page (/lights/panel.html) that has no menu and only shows the current lights, each as one big button to tun the device on and off. This page is meant for a phone screen, typically a shortcut on the phone's home screen. (Because HousePortal redirects the URL, it is recommended to turn the phone in airplane mode when creating the shortcut from the web browser.)
+

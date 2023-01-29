@@ -233,7 +233,7 @@ static void houselights_plugs_discovery (const char *provider,
        }
 
        Plugs[plug].countdown = MAX_LIFE; // New lease in life.
-       Plugs[plug].is_light = (plug >= 0);
+       Plugs[plug].is_light = (gear >= 0);
    }
 }
 

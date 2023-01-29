@@ -14,9 +14,9 @@ function lightsUpdateStatus (response) {
     var plugs = response.lights.plugs;
     for (var i = 0; i < plugs.length; i++) {
         var plug = plugs[i];
-        if (!plug.light) continue;
         var tag = plug.name.replace (/ /g,'-')
         var button = document.getElementById ('button-'+tag);
+        if (!button) continue;
         if (plug.state == 'on') {
             button.className = 'controlOn';
             button.controlState = 'off';
@@ -60,6 +60,7 @@ function lightsShowStatus (response) {
    for (var i = 0; i < plugs.length; i++) {
         var plug = plugs[i];
         if (!plug.light) continue;
+        if (plug.state == 'silent') continue;
         var tag = plug.name.replace (/ /g,'-')
 
         if (cursor >= columns) {

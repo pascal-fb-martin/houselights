@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel=stylesheet type="text/css" href="/house.css" title="House">
+<script>
+
+var LightsCount = 0;
+
+function lightsUpdateStatus (response) {
+
+    document.getElementsByTagName('title')[0].innerHTML =
+        response.host+' - Ligths Panel';
+
+    var plugs = response.lights.plugs;
+    for (var i = 0; i < plugs.length; i++) {
+        var plug = plugs[i];
+        if (!plug.light) continue;
+        var tag = plug.name.replace (/ /g,'-')
+        var button = document.getElementById ('button-'+tag);
+        if (plug.state == 'on') {
+            button.className = 'controlOn';
+            button.controlState = 'off';
+            button.disabled = false;
+        } else if (plug.state == 'off') {
+            button.className = 'controlOff';
+            button.controlState = 'on';
+            button.disabled = false;
+        } else {
+            button.className = 'controlDisabled';
+            button.disabled = true;
+        }
+    }
+}
+
+function controlClick () {
+    var device = encodeURIComponent(this.controlName);
+    var state = this.controlState;
+    var command = new XMLHttpRequest();
+    command.open("GET", "/lights/set?device="+device+"&state="+state);
+    command.onreadystatechange = function () {
+        if (command.readyState === 4 && command.status === 200) {
+            lightsUpdateStatus (JSON.parse(command.responseText));
+        }
+    }
+    command.send(null);
+}
+
+function lightsShowStatus (response) {
+   var iolist = document.getElementById ('iolist');
+   var remove = document.getElementsByClassName ('removeThisLine');
+   while (remove.length > 0) {
+       iolist.removeChild(remove[0]);
+   }
+   var plugs = response.lights.plugs;
+   var columns = Math.ceil (window.innerWidth / 200);
+   var width = Math.floor (100 / columns);
+   var cursor = 0;
+   var firstline = true;
+   var outer = document.createElement("tr");
+   for (var i = 0; i < plugs.length; i++) {
+        var plug = plugs[i];
+        if (!plug.light) continue;
+        var tag = plug.name.replace (/ /g,'-')
+
+        if (cursor >= columns) {
+           outer.className = "removeThisLine";
+           iolist.appendChild(outer);
+           outer = document.createElement("tr");
+           cursor = 0;
+           firstline = false;
+        }
+        cursor += 1;
+
+        inner = document.createElement("td");
+        if (firstline) inner.style.width = width + '%';
+        var button = document.createElement("button");
+        button.innerHTML = plug.name;
+        button.disabled = true;
+        button.id = 'button-'+tag;
+        button.onclick = controlClick;
+        button.controlName = plug.name;
+        button.controlstate = 'on';
+        inner.appendChild(button);
+        outer.appendChild(inner);
+    }
+    outer.className = "removeThisLine";
+    iolist.appendChild(outer);
+}
+
+function lightsStatus () {
+    var command = new XMLHttpRequest();
+    command.open("GET", "/lights/status");
+    command.onreadystatechange = function () {
+        if (command.readyState === 4 && command.status === 200) {
+            var response = JSON.parse(command.responseText);
+            if (response.lights.plugs.length != LightsCount) {
+               lightsShowStatus (response);
+               LightsCount = response.lights.plugs.length;
+            }
+            lightsUpdateStatus (response);
+        }
+    }
+    command.send(null);
+}
+
+function resizeButtons () {
+   if (LightsCount) {
+      LightsCount = 0;
+      lightsStatus();
+   }
+}
+
+window.onload = function() {
+   lightsStatus();
+   setInterval (lightsStatus, 1000);
+};
+window.onresize = resizeButtons;
+</script>
+<head>
+   <title>Lights Panel</title>
+</head>
+<body>
+   <table id="iolist" border="0">
+   </table>
+</body>
+</html>
+

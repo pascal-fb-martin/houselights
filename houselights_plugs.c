@@ -81,6 +81,7 @@ typedef struct {
     time_t requested;
     time_t deadline;
     char manual;
+    char is_light;
     char status; // u: unmapped, i: idle, a: active (pending).
     char url[256];
 } LightPlug;
@@ -119,6 +120,7 @@ static int houselights_plugs_search (const char *name) {
     Plugs[free].state[0] = 0;
     Plugs[free].pulse = 0;
     Plugs[free].manual = 0;
+    Plugs[free].is_light = 0;
     Plugs[free].status = 'u';
     Plugs[free].url[0] = 0;
 
@@ -231,6 +233,7 @@ static void houselights_plugs_discovery (const char *provider,
        }
 
        Plugs[plug].countdown = MAX_LIFE; // New lease in life.
+       Plugs[plug].is_light = (plug >= 0);
    }
 }
 
@@ -482,8 +485,8 @@ int houselights_plugs_status (char *buffer, int size) {
             p[0] = 0;
 
         cursor += snprintf (buffer+cursor, size-cursor,
-                            "%s{\"name\":\"%s\",\"status\":\"%c\",\"state\":\"%s\"%s%s}",
-                            prefix, Plugs[i].name, Plugs[i].status, Plugs[i].state, s, p);
+                            "%s{\"name\":\"%s\",\"status\":\"%c\",\"state\":\"%s\",\"light\":%s%s%s}",
+                            prefix, Plugs[i].name, Plugs[i].status, Plugs[i].state, Plugs[i].is_light?"true":"false", s, p);
         if (cursor >= size) goto overflow;
         prefix = ",";
     }

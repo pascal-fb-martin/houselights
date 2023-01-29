@@ -52,7 +52,12 @@ function lightsShowStatus (response) {
        iolist.removeChild(remove[0]);
    }
    var plugs = response.lights.plugs;
-   var columns = Math.ceil (window.innerWidth / 200);
+   var columns
+   if (window.innerWidth > window.innerHeight) {
+       columns = 5;
+   } else {
+       columns = 2;
+   }
    var width = Math.floor (100 / columns);
    var cursor = 0;
    var firstline = true;
@@ -121,7 +126,7 @@ window.onresize = resizeButtons;
    <title>Lights Panel</title>
 </head>
 <body>
-   <table id="iolist" border="0">
+   <table id="iolist" width="100%" border="0">
    </table>
 </body>
 </html>

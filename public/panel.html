@@ -9,7 +9,7 @@ var LightsCount = 0;
 function lightsUpdateStatus (response) {
 
     document.getElementsByTagName('title')[0].innerHTML =
-        response.host+' - Ligths Panel';
+        response.host+' - Lights Panel';
 
     var plugs = response.lights.plugs;
     for (var i = 0; i < plugs.length; i++) {

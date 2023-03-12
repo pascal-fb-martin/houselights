@@ -12,10 +12,10 @@ clean:
 rebuild: clean all
 
 %.o: %.c
-	gcc -c -g -O -o $@ $<
+	gcc -c -Os -o $@ $<
 
 houselights: $(OBJS)
-	gcc -g -O -o houselights $(OBJS) -lhouseportal -lechttp -lssl -lcrypto -lgpiod -lrt
+	gcc -Os -o houselights $(OBJS) -lhouseportal -lechttp -lssl -lcrypto -lgpiod -lrt
 
 install:
 	if [ -e /etc/init.d/houselights ] ; then systemctl stop houselights ; systemctl disable houselights ; rm -f /etc/init.d/houselights ; fi

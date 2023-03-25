@@ -25,7 +25,7 @@ function lightsShow (response) {
        'http://'+response.proxy+'/index.html';
 
    document.getElementsByTagName('title')[0].innerHTML =
-       response.host+' - Lights Control';
+       response.host+' - Lights Schedule';
 
    var schedules = response.lights.schedules;
    var addline = document.getElementById ('lightAddLine');
@@ -174,7 +174,7 @@ window.onload = function() {
 };
 </script>
 <head>
-   <title>Lights Control</title>
+   <title>Lights Schedule</title>
 </head>
 <body>
    <table class="housetopcontainer">

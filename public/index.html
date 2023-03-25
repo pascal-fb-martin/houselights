@@ -11,7 +11,7 @@ function lightsUpdateStatus (response) {
     document.getElementById('portal').href = 'http://'+response.proxy+'/index.html';
 
     document.getElementsByTagName('title')[0].innerHTML =
-        response.host+' - Ligths Control';
+        response.host+' - Ligths Dashboard';
 
     var plugs = response.lights.plugs;
     for (var i = 0; i < plugs.length; i++) {
@@ -117,7 +117,7 @@ window.onload = function() {
 window.onresize = resizeButtons;
 </script>
 <head>
-   <title>Lights Control</title>
+   <title>Lights Dashboard</title>
 </head>
 <body>
    <table class="housetopcontainer">

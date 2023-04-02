@@ -51,6 +51,7 @@
  */
 
 #include <string.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -301,7 +302,7 @@ static void houselights_plugs_prune (time_t now) {
 static void houselights_plugs_controlled
                (void *origin, int status, char *data, int length) {
 
-   LightPlug *plug = Plugs+(int)(0xffffffff & (long long)origin);
+   LightPlug *plug = Plugs+(int)(0xffffffff & (intptr_t)origin);
 
    status = echttp_redirected("GET");
    if (!status) {
@@ -352,7 +353,7 @@ static void houselights_plugs_submit (int plug) {
         return;
     }
     DEBUG ("GET %s\n", url);
-    echttp_submit (0, 0, houselights_plugs_controlled, (void *)(0LL+plug));
+    echttp_submit (0, 0, houselights_plugs_controlled, (void *)((intptr_t)plug));
     return;
 }
 

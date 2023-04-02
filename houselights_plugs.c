@@ -67,10 +67,9 @@
 
 #define DEFAULTSERVER "http://localhost/relay"
 
-#define MAX_PROVIDER 64
-
-static char *Providers[MAX_PROVIDER];
-static int   ProvidersCount = 0;
+static char **Providers;
+static int    ProvidersSize = 0;
+static int    ProvidersCount = 0;
 
 typedef struct {
     char *name;
@@ -87,9 +86,9 @@ typedef struct {
 } LightPlug;
 
 #define MAX_LIFE  3
-#define MAX_PLUGS 256
 
-static LightPlug Plugs[MAX_PLUGS];
+static LightPlug *Plugs = 0;
+static int       PlugsSize = 0;
 static int       PlugsCount = 0;
 
 #define PLUG_ON_LIMIT (8*60*60)    // do not set a light on for longer
@@ -109,7 +108,10 @@ static int houselights_plugs_search (const char *name) {
         }
     }
     if (free < 0) {
-        if (PlugsCount >= MAX_PLUGS) return -1;
+        if (PlugsCount >= PlugsSize) {
+            PlugsSize += 32;
+            Plugs = realloc (Plugs, PlugsSize * sizeof(LightPlug));
+        }
         free = PlugsCount++;
     }
     Plugs[free].name = strdup(name);
@@ -127,14 +129,17 @@ static int houselights_plugs_search (const char *name) {
     return free;
 }
 
-static void houselights_plugs_provider_keep (const char *provider) {
+static const char *houselights_plugs_provider_keep (const char *provider) {
     int i;
     for (i = 0; i < ProvidersCount; ++i) {
-        if (!strcmp (Providers[i], provider)) return;
+        if (!strcmp (Providers[i], provider)) return Providers[i];
     }
-    if (ProvidersCount >= MAX_PROVIDER) --ProvidersCount; // Avoid overflow.
+    if (ProvidersCount >= ProvidersSize) {
+        ProvidersSize += 16;
+        Providers = realloc (Providers, ProvidersSize * sizeof(char *));
+    }
 
-    Providers[ProvidersCount++] = strdup(provider); // Keep the string.
+    return Providers[ProvidersCount++] = strdup(provider); // Keep the string.
 }
 
 static int houselights_plugs_pending (int plug) {
@@ -260,7 +265,7 @@ static void houselights_plugs_scan_server
 
     char url[256];
 
-    houselights_plugs_provider_keep (provider);
+    provider = houselights_plugs_provider_keep (provider);
 
     snprintf (url, sizeof(url), "%s/status", provider);
 
@@ -289,16 +294,14 @@ static void houselights_plugs_prune (time_t now) {
                 Plugs[i].url[0] = 0;
             }
         }
-        if (!Plugs[i].name) {
-            if (i == PlugsCount-1) PlugsCount -= 1;
-        }
     }
+    while (PlugsCount > 0 && (!Plugs[PlugsCount-1].name)) PlugsCount -= 1;
 }
 
 static void houselights_plugs_controlled
                (void *origin, int status, char *data, int length) {
 
-   LightPlug *plug = (LightPlug *)origin;
+   LightPlug *plug = Plugs+(int)(0xffffffff & (long long)origin);
 
    status = echttp_redirected("GET");
    if (!status) {
@@ -322,10 +325,16 @@ static void houselights_plugs_controlled
 
 static void houselights_plugs_submit (int plug) {
 
+    static char url[256];
+
     int pulse = 0;
     time_t now = time(0);
     char encoded[128];
-    static char url[256];
+
+    if (! Plugs[plug].url[0]) {
+        houselog_event ("PLUG", Plugs[plug].name, "IGNORED", "NOT DISCOVERED");
+        return;
+    }
 
     if (Plugs[plug].deadline > 0)
         pulse = (int) (Plugs[plug].deadline - now);
@@ -343,7 +352,7 @@ static void houselights_plugs_submit (int plug) {
         return;
     }
     DEBUG ("GET %s\n", url);
-    echttp_submit (0, 0, houselights_plugs_controlled, (void *)(Plugs+plug));
+    echttp_submit (0, 0, houselights_plugs_controlled, (void *)(0LL+plug));
     return;
 }
 
@@ -380,7 +389,7 @@ static void houselights_plugs_set (const char *name,
                             "%s", Plugs[plug].commanded);
         }
     }
-    if (Plugs[plug].url[0]) houselights_plugs_submit (plug);
+    houselights_plugs_submit (plug);
 }
 
 void houselights_plugs_on (const char *name, int pulse, int manual) {

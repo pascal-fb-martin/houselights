@@ -40,7 +40,6 @@ install-files:
 
 uninstall-files:
 	rm -f /usr/local/bin/houselights
-	rm -f /lib/systemd/system/houselights.service /etc/init.d/houselights
 	rm -rf $(SHARE)/public/lights
 
 purge-config:

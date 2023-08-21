@@ -60,6 +60,24 @@ uninstall-systemd:
 
 stop-systemd: uninstall-systemd
 
+# Distribution agnostic runit support ---------------------------
+
+install-runit:
+	mkdir -p /etc/sv/houselights
+	cp runit.run /etc/sv/houselights/run
+	chown root:root /etc/sv/houselights /etc/sv/houselights/run
+	chmod 755 /etc/sv/houselights/run
+	rm -f /etc/runit/runsvdir/default/houselights
+	ln -s /etc/sv/houselights /etc/runit/runsvdir/default/houselights
+	/bin/sleep 5
+	/usr/bin/sv up houselights
+
+uninstall-runit:
+	if [ -e /etc/sv/houselights ] ; then /usr/bin/sv shutdown houselights ; rm -rf /etc/sv/houselights ; rm -f /etc/runit/runsvdir/default/houselights ; /bin/sleep 5 ; fi
+
+stop-runit:
+	if [ -e /etc/sv/houselights ] ; then /usr/bin/sv shutdown houselights ; fi
+
 # Debian GNU/Linux install --------------------------------------
 
 install-debian: stop-systemd install-files install-systemd
@@ -68,11 +86,11 @@ uninstall-debian: uninstall-systemd uninstall-files
 
 purge-debian: uninstall-debian purge-config
 
-# Devuan GNU/Linux install --------------------------------------
+# Devuan GNU/Linux install (using runit) ------------------------
 
-install-devuan: install-files
+install-devuan: stop-runit install-files install-runit
 
-uninstall-devuan: uninstall-files
+uninstall-devuan: uninstall-runit uninstall-files
 
 purge-devuan: uninstall-devuan purge-config
 

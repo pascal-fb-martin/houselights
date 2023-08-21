@@ -96,9 +96,9 @@ purge-devuan: uninstall-devuan purge-config
 
 # Void Linux install --------------------------------------------
 
-install-void: install-files
+install-void: stop-runit install-files install-runit
 
-uninstall-void: uninstall-files
+uninstall-void: uninstall-runit uninstall-files
 
 purge-void: uninstall-void purge-config
 

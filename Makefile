@@ -17,7 +17,7 @@ rebuild: clean all
 	gcc -c -Os -o $@ $<
 
 houselights: $(OBJS)
-	gcc -Os -o houselights $(OBJS) -lhouseportal -lechttp -lssl -lcrypto -lgpiod -lrt
+	gcc -Os -o houselights $(OBJS) -lhouseportal -lechttp -lssl -lcrypto -lrt
 
 dev:
 

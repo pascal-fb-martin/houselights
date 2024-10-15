@@ -43,6 +43,7 @@
 #include "houselog.h"
 #include "houseconfig.h"
 #include "housediscover.h"
+#include "housedepositor.h"
 
 #include "houselights_plugs.h"
 #include "houselights_schedule.h"
@@ -118,6 +119,8 @@ static const char *lights_save (const char *method, const char *uri,
                                   const char *data, int length) {
     const char *text = lights_schedule (method, uri, data, length);
     houseconfig_update (text);
+    echttp_content_type_json ();
+    housedepositor_put ("config", houseconfig_name(), text, strlen(text));
     return text;
 }
 
@@ -178,8 +181,16 @@ static void lights_background (int fd, int mode) {
     }
     houselights_plugs_periodic(now);
     houselights_schedule_periodic(now);
-    houselog_background (now);
     housediscover (now);
+    houselog_background (now);
+    housedepositor_periodic (now);
+}
+
+static void lights_config_listener (const char *name, time_t timestamp,
+                                    const char *data, int length) {
+    houselog_event ("SYSTEM", "CONFIG", "LOAD", "FROM DEPOT %s", name);
+    const char *error = houseconfig_update (data);
+    houselights_schedule_refresh ();
 }
 
 static void lights_protect (const char *method, const char *uri) {
@@ -214,7 +225,7 @@ int main (int argc, const char **argv) {
         houselog_trace
             (HOUSE_FAILURE, "CONFIG", "Cannot load configuration: %s\n", error);
     }
-    error = houselights_schedule_load (argc, argv);
+    error = houselights_schedule_refresh ();
     if (error) {
         houselog_trace
             (HOUSE_FAILURE, "PLUG", "Cannot initialize: %s\n", error);
@@ -235,6 +246,8 @@ int main (int argc, const char **argv) {
     echttp_static_route ("/", "/usr/local/share/house/public");
     echttp_background (&lights_background);
     housediscover_initialize (argc, argv);
+    housedepositor_initialize (argc, argv);
+    housedepositor_subscribe ("config", houseconfig_name(), lights_config_listener);
 
     houselog_event ("SERVICE", "lights", "STARTED", "ON %s", houselog_host());
     echttp_loop();

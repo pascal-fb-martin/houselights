@@ -24,9 +24,9 @@
  *
  * This module handles scheduling lighting plugs at specific intervals.
  *
- * const char *houselights_schedule_load (int argc, const char *argv[]);
+ * const char *houselights_schedule_refresh (void);
  *
- *    Load the last saved set of schedules from the configuration.
+ *    Activate the last saved set of schedules from the configuration.
  *
  * void houselights_schedule_enable  (void);
  * void houselights_schedule_disable (void);
@@ -147,7 +147,7 @@ static int houselights_schedule_adjust (LightTime *t) {
     return hour * 60 + minutes + LightsRandom;
 }
 
-const char *houselights_schedule_load (int argc, const char *argv[]) {
+const char *houselights_schedule_refresh (void) {
 
     int i;
     const char *mode = houseconfig_string (0, ".lights.mode");

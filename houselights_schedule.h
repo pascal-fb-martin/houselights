@@ -21,7 +21,7 @@
  * houselights_schedule.h - Control the light schedule.
  */
 
-const char *houselights_schedule_load (int argc, const char *argv[]);
+const char *houselights_schedule_refresh (void);
 
 void houselights_schedule_enable  (void);
 void houselights_schedule_disable (void);

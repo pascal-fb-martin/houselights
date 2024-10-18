@@ -7,9 +7,12 @@ StartLimitBurst=5
 [Service]
 Restart=on-failure
 RestartSec=50s
+Environment="HTTPOPTS=" "HOUSEOPTS=" "OTHEROPTS=" "OPTS="
+EnvironmentFile=-/etc/default/housegeneric
 EnvironmentFile=-/etc/default/houselights
+EnvironmentFile=-/etc/sysconfig/housegeneric
 EnvironmentFile=-/etc/sysconfig/houselights
-ExecStart=/usr/local/bin/houselights $OPTS
+ExecStart=/usr/local/bin/houselights $HTTPOPTS $HOUSEOPTS $OTHEROPTS $OPTS
 
 [Install]
 WantedBy=multi-user.target

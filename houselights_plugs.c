@@ -225,11 +225,12 @@ static void houselights_plugs_discovery (const char *provider,
 
        if (strcmp (Plugs[plug].url, provider)) {
            if (Plugs[plug].url[0]) {
+               // A change of server is very unusual. Let store these events.
                houselog_event ("PLUG", Plugs[plug].name , "ROUTE",
-                               "%d CHANGED FROM %s TO %s", plug, Plugs[plug].url, provider);
+                               "CHANGED FROM %s TO %s", Plugs[plug].url, provider);
            } else {
-               houselog_event ("PLUG", Plugs[plug].name, "ROUTE",
-                               "%d SET TO %s", plug, provider);
+               houselog_event_local ("PLUG", Plugs[plug].name, "ROUTE",
+                                     "SET TO %s", provider);
            }
            snprintf (Plugs[plug].url, sizeof(Plugs[plug].url), provider);
            if (Plugs[plug].status == 'u') Plugs[plug].status = 'i';
@@ -267,7 +268,6 @@ static void houselights_plugs_discovered
        houselog_trace (HOUSE_FAILURE, provider, "HTTP error %d", status);
        return;
    }
-   houselog_trace (HOUSE_INFO, "DISCOVERY", "STATUS FROM %s", provider); // DEBUG.
    houselights_plugs_discovery (provider, data, length);
 }
 
@@ -280,7 +280,6 @@ static void houselights_plugs_scan_server
 
     snprintf (url, sizeof(url), "%s/status", provider);
 
-   houselog_trace (HOUSE_INFO, "DISCOVERY", "SENSE %s", provider); // DEBUG.
     DEBUG ("Attempting discovery at %s\n", url);
     const char *error = echttp_client ("GET", url);
     if (error) {
@@ -452,15 +451,6 @@ void houselights_plugs_periodic (time_t now) {
     if (now <= latestdiscovery + 60 && now >= starting + 120) return;
     latestdiscovery = now;
 
-    // Rebuild the list of control servers, and then launch a discovery
-    // refresh. This way we don't keep dead providers.
-    //
-    DEBUG ("Reset providers cache\n");
-    for (i = 0; i < ProvidersCount; ++i) {
-        if (Providers[i]) free(Providers[i]);
-        Providers[i] = 0;
-    }
-    ProvidersCount = 0;
     DEBUG ("Proceeding with discovery\n");
     housediscovered ("control", 0, houselights_plugs_scan_server);
     houselights_plugs_prune (now);

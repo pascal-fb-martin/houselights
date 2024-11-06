@@ -225,8 +225,8 @@ static void houselights_plugs_discovery (const char *provider,
 
            DEBUG ("Plug %s discovered on %s\n",
                   Plugs[plug].name, Plugs[plug].url);
-           houselog_event ("PLUG", Plugs[plug].name, "ROUTE",
-                           "TO %s", Plugs[plug].url);
+           houselog_event_local
+               ("PLUG", Plugs[plug].name, "ROUTE", "TO %s", Plugs[plug].url);
 
            // If we discovered a plug for which there is a pending control,
            // This is the best time to submit it.

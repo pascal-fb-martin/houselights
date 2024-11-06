@@ -212,10 +212,14 @@ static void houselights_plugs_discovery (const char *provider,
        int state = echttp_json_search (inner, ".state");
        if (state >= 0) {
            if (strcmp (Plugs[plug].state, inner[state].value.string)) {
+               int hasstate = (Plugs[plug].state[0] > 0);
                strncpy (Plugs[plug].state,
                         inner[state].value.string, sizeof(Plugs[0].state));
-               houselog_event ("PLUG", Plugs[plug].name, "CHANGED",
-                               "TO %s", Plugs[plug].state);
+               if (hasstate) {
+                   // Do not report the initial state acquisition as a change.
+                   houselog_event ("PLUG", Plugs[plug].name, "CHANGED",
+                                   "TO %s", Plugs[plug].state);
+               }
            }
        }
 

@@ -168,40 +168,34 @@ static void houselights_plugs_discovery (const char *provider,
    int  i;
 
    time_t now = time(0);
-   char *localcopy = strdup (data); // REMOVE ME: DEBUG code.
 
    // Analyze the answer and retrieve the control points matching our plugs.
    const char *error = echttp_json_parse (data, tokens, &count);
    if (error) {
        houselog_trace
            (HOUSE_FAILURE, provider, "JSON syntax error, %s", error);
-       free (localcopy); // REMOVE ME: DEBUG code.
        return;
    }
    if (count <= 0) {
        houselog_trace (HOUSE_FAILURE, provider, "no data");
-       free (localcopy); // REMOVE ME: DEBUG code.
        return;
    }
 
    int controls = echttp_json_search (tokens, ".control.status");
    if (controls <= 0) {
        houselog_trace (HOUSE_FAILURE, provider, "no plug data");
-       free (localcopy); // REMOVE ME: DEBUG code.
        return;
    }
 
    int n = tokens[controls].length;
    if (n <= 0) {
        houselog_trace (HOUSE_FAILURE, provider, "empty plug data");
-       free (localcopy); // REMOVE ME: DEBUG code.
        return;
    }
 
    error = echttp_json_enumerate (tokens+controls, innerlist);
    if (error) {
        houselog_trace (HOUSE_FAILURE, path, "%s", error);
-       free (localcopy); // REMOVE ME: DEBUG code.
        return;
    }
 
@@ -231,16 +225,17 @@ static void houselights_plugs_discovery (const char *provider,
 
        if (strcmp (Plugs[plug].url, provider)) {
            if (Plugs[plug].url[0]) {
-               houselog_trace (HOUSE_INFO, "ROUTE",
-                               "PROVIDER CHANGED FROM %s TO %s ON %s", Plugs[plug].url, provider, localcopy);
+               houselog_event ("PLUG", Plugs[plug].name , "ROUTE",
+                               "%d CHANGED FROM %s TO %s", plug, Plugs[plug].url, provider);
+           } else {
+               houselog_event ("PLUG", Plugs[plug].name, "ROUTE",
+                               "%d SET TO %s", plug, provider);
            }
            snprintf (Plugs[plug].url, sizeof(Plugs[plug].url), provider);
            if (Plugs[plug].status == 'u') Plugs[plug].status = 'i';
 
            DEBUG ("Plug %s discovered on %s\n",
                   Plugs[plug].name, Plugs[plug].url);
-           houselog_event_local
-               ("PLUG", Plugs[plug].name, "ROUTE", "TO %s", Plugs[plug].url);
 
            // If we discovered a plug for which there is a pending control,
            // This is the best time to submit it.
@@ -255,7 +250,6 @@ static void houselights_plugs_discovery (const char *provider,
        Plugs[plug].countdown = MAX_LIFE; // New lease in life.
        Plugs[plug].is_light = (gear >= 0);
    }
-   free (localcopy); // REMOVE ME: DEBUG code.
 }
 
 static void houselights_plugs_discovered

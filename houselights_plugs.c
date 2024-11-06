@@ -168,34 +168,40 @@ static void houselights_plugs_discovery (const char *provider,
    int  i;
 
    time_t now = time(0);
+   char *localcopy = strdup (data); // REMOVE ME: DEBUG code.
 
    // Analyze the answer and retrieve the control points matching our plugs.
    const char *error = echttp_json_parse (data, tokens, &count);
    if (error) {
        houselog_trace
            (HOUSE_FAILURE, provider, "JSON syntax error, %s", error);
+       free (localcopy); // REMOVE ME: DEBUG code.
        return;
    }
    if (count <= 0) {
        houselog_trace (HOUSE_FAILURE, provider, "no data");
+       free (localcopy); // REMOVE ME: DEBUG code.
        return;
    }
 
    int controls = echttp_json_search (tokens, ".control.status");
    if (controls <= 0) {
        houselog_trace (HOUSE_FAILURE, provider, "no plug data");
+       free (localcopy); // REMOVE ME: DEBUG code.
        return;
    }
 
    int n = tokens[controls].length;
    if (n <= 0) {
        houselog_trace (HOUSE_FAILURE, provider, "empty plug data");
+       free (localcopy); // REMOVE ME: DEBUG code.
        return;
    }
 
    error = echttp_json_enumerate (tokens+controls, innerlist);
    if (error) {
        houselog_trace (HOUSE_FAILURE, path, "%s", error);
+       free (localcopy); // REMOVE ME: DEBUG code.
        return;
    }
 
@@ -224,6 +230,10 @@ static void houselights_plugs_discovery (const char *provider,
        }
 
        if (strcmp (Plugs[plug].url, provider)) {
+           if (Plugs[plug].url[0]) {
+               houselog_trace (HOUSE_INFO, "ROUTE",
+                               "PROVIDER CHANGED FROM %s TO %s ON %s", Plugs[plug].url, provider, localcopy);
+           }
            snprintf (Plugs[plug].url, sizeof(Plugs[plug].url), provider);
            if (Plugs[plug].status == 'u') Plugs[plug].status = 'i';
 
@@ -245,6 +255,7 @@ static void houselights_plugs_discovery (const char *provider,
        Plugs[plug].countdown = MAX_LIFE; // New lease in life.
        Plugs[plug].is_light = (gear >= 0);
    }
+   free (localcopy); // REMOVE ME: DEBUG code.
 }
 
 static void houselights_plugs_discovered
@@ -262,6 +273,7 @@ static void houselights_plugs_discovered
        houselog_trace (HOUSE_FAILURE, provider, "HTTP error %d", status);
        return;
    }
+   houselog_trace (HOUSE_INFO, "DISCOVERY", "STATUS FROM %s", provider); // DEBUG.
    houselights_plugs_discovery (provider, data, length);
 }
 
@@ -274,6 +286,7 @@ static void houselights_plugs_scan_server
 
     snprintf (url, sizeof(url), "%s/status", provider);
 
+   houselog_trace (HOUSE_INFO, "DISCOVERY", "SENSE %s", provider); // DEBUG.
     DEBUG ("Attempting discovery at %s\n", url);
     const char *error = echttp_client ("GET", url);
     if (error) {

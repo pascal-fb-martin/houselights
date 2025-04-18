@@ -322,14 +322,20 @@ int houselights_schedule_status (char *buffer, int size) {
         if (!Schedules[i].id) continue;
         if (!Schedules[i].plug) continue;
 
+        char on[2];
+        char off[2];
+        on[0] = Schedules[i].on.base;
+        off[0] = Schedules[i].off.base;
+        on[1] = off[1] = 0;
         cursor += snprintf (buffer+cursor, size-cursor,
                             "%s{\"id\":%d,\"device\":\"%s\",\"state\":\"%c\""
-                                ",\"on\":\"%02d:%02d\",\"off\":\"%02d:%02d\""
+                                ",\"on\":\"%s%02d:%02d\""
+                                ",\"off\":\"%s%02d:%02d\""
                                 ",\"days\":%d}",
                             prefix, Schedules[i].id,
                             Schedules[i].plug, Schedules[i].state,
-                            Schedules[i].on.hour, Schedules[i].on.minutes,
-                            Schedules[i].off.hour, Schedules[i].off.minutes,
+                            on, Schedules[i].on.hour, Schedules[i].on.minutes,
+                            off, Schedules[i].off.hour, Schedules[i].off.minutes,
                             Schedules[i].days);
         if (cursor >= size) goto overflow;
         prefix = ",";

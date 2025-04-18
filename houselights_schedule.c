@@ -67,6 +67,7 @@
 #include "houselog.h"
 #include "houseconfig.h"
 #include "housediscover.h"
+#include "housealmanac.h"
 
 #include "houselights_plugs.h"
 #include "houselights_schedule.h"
@@ -76,6 +77,7 @@
 typedef struct {
     int hour;
     int minutes;
+    char base;
 } LightTime;
 
 typedef struct {
@@ -94,12 +96,7 @@ static int ScheduleDisabled = 1;
 static LightSchedule Schedules[MAX_SCHEDULES];
 static int           SchedulesCount = 0;
 
-// TBD: these default hours to be adjusted daily through an almanac service.
-//
-static LightTime LightsSunrise = {5, 0};
-static LightTime LightsSunset  = {20, 0};
-
-static int LightsRandom = 0; // Changed hourly.
+static int LightsRandom = 0; // Random adjustment to make it realistic.
 
 
 static void houselights_schedule_import (const char *ascii, LightTime *t) {
@@ -110,41 +107,35 @@ static void houselights_schedule_import (const char *ascii, LightTime *t) {
     const char *p = strchr(ascii, ':');
     if (p) {
         t->minutes = atoi(p+1);
+        if (t->minutes < -30) t->minutes = -30;
+        if (t->minutes >= 60) t->minutes = 59;
     } else {
         t->minutes = 0;
     }
-    if (strstr (ascii, "sunrise") == ascii) {
-        t->hour = -1; 
-        return;
-    } else if (strstr (ascii, "sunset") == ascii) {
-        t->hour = 25;
-        return;
+    if (ascii[0] == '+') {
+        t->base = '+'; // Delta after sunset.
+        ascii += 1;
+    } else if (ascii[0] == '-') {
+        t->base = '-'; // Delta before sunrise.
+        ascii += 1;
     } else {
-        t->hour = atoi(ascii);
-        if (t->hour < 0 || t->hour > 23) t->hour = 0;
+        t->base = 0; // Time of day.
     }
-    if (t->minutes < -30) t->minutes = -30;
-    if (t->minutes >= 60) t->minutes = 59;
+    t->hour = atoi(ascii);
+    if (t->hour < 0 || t->hour > 23) t->hour = 0;
 }
 
-static int houselights_schedule_adjust (LightTime *t) {
+static time_t houselights_schedule_adjust (time_t base, LightTime *t) {
 
-    if (t->hour == -2)  return 0;
-
-    int hour, minutes;
-
-    minutes = t->minutes;
-    if (t->hour == -1) {
-        hour = LightsSunrise.hour;
-        minutes += LightsSunrise.minutes;
-    } else if (t->hour == 25) {
-        hour = LightsSunset.hour;
-        minutes += LightsSunset.minutes;
-    } else {
-        hour = t->hour;
-    }
     // It is OK if minutes < 0. For example 12:-20 is "20mn before 12".
-    return hour * 60 + minutes + LightsRandom;
+    int delta = (t->hour * 3600) + (t->minutes * 60) + LightsRandom;
+
+    if (t->base == '-') {
+        return housealmanac_sunrise() - delta;
+    } else if (t->base == '+') {
+        return housealmanac_sunset() + delta;
+    }
+    return base + delta;
 }
 
 const char *houselights_schedule_refresh (void) {
@@ -233,23 +224,25 @@ void houselights_schedule_delete (const char *identifier) {
 void houselights_schedule_periodic (time_t now) {
 
     static time_t LastCall = 0;
-    struct tm *t;
     int i;
 
     if (ScheduleDisabled) return;
+    if (!housealmanac_ready()) return; // Start scheduling only when ready.
 
-    if (now < LastCall + 60) return;
+    if (now < LastCall + 30) return; // Re-evaluate twice a minute.
     LastCall = now;
 
-    t = localtime (&LastCall);
-    int daytime = t->tm_hour * 60 + t->tm_min;
-    int today = t->tm_wday;
+    struct tm t = *localtime (&now);
+    int hour = t.tm_hour;
+    int today = t.tm_wday;
     int yesterday = (today <= 0) ? 6 : today - 1;
+    t.tm_hour = t.tm_min = t.tm_sec = 0;
+    time_t base = mktime (&t);
 
-    if (daytime % 60 == 0) {
+    if ((now % 300) <= 30) { // Re-evaluate every 5 minutes.
         struct timeval tv;
         gettimeofday (&tv, 0);
-        LightsRandom = tv.tv_usec % 20 - 10; // Range -10 .. 10.
+        LightsRandom = (tv.tv_usec % 600) - 300; // Range -5 to 5 minutes.
     }
 
     for (i = 0 ; i < SchedulesCount; ++i) {
@@ -257,50 +250,51 @@ void houselights_schedule_periodic (time_t now) {
         if (!Schedules[i].id) continue;
         if (!Schedules[i].plug) continue;
 
-        int on = houselights_schedule_adjust (&(Schedules[i].on));
-        int off = houselights_schedule_adjust (&(Schedules[i].off));
+        time_t on = houselights_schedule_adjust (base, &(Schedules[i].on));
+        time_t off = houselights_schedule_adjust (base, &(Schedules[i].off));
 
-        int active = 0;
         int duration = 0;
 
         if (on < off) {
             // Active from on to off today.
             //
-            if (daytime >= on && daytime < off) {
+            if (now >= on && now < off) {
                 if (Schedules[i].days & (1 << today)) {
-                    active = 1;
-                    duration = off - daytime;
+                    duration = (int)(off - now);
                 }
             }
-        } else {
-            // Active from on to midnight today, from midnight to off next day
-            // (In the later case, the check is made the next day..)
+        } else  if (on > off) {
+            // his can happen if the interval crosses midnight. Two cases:
+            // - evening: active from on to midnight (real off is tomorrow).
+            // - morning: active from midnight to off (real on was yesterday).
+            // Restriction: durations longer than 12h are not supported.
             //
-            if (daytime >= on) {
+            if ((hour > 12) && (now >= on)) {
+                // Current time is between on and midnight.
                 if (Schedules[i].days & (1 << today)) {
-                    active = 1;
-                    duration = 24*60 - daytime;
+                    duration = (int)(off + (24*60*60) - now);
                 }
-            } else if (daytime < off) {
+            } else if ((hour < 12) && (now < off)) {
+                // Current time is between midnight and off.
+                // This schedule started yesterday, so this is the reference.
                 if (Schedules[i].days & (1 << yesterday)) {
-                    active = 1;
-                    duration = off - daytime;
+                    duration = (int)(off - now);
                 }
             }
         }
 
         // If the schedule is active, maintain the plugs on until the next
-        // evaluation (plus a 5 seconds grace period to avoid flickering).
+        // evaluation (plus a 10 seconds grace period to avoid flickering).
         // If no schedule is active for this plug, it will just switch
         // off on its own, when the last pulse expires.
-        // If this service crashes, the lights will just go off on their
-        // own after a minute.
+        // If this service stops for any reason, the lights will just go off
+        // on their own after less than a minute.
         //
-        if (active) {
-            houselights_plugs_on (Schedules[i].plug, 65, 0);
+        if (duration > 0) {
+            houselights_plugs_on (Schedules[i].plug, 40, 0);
             if (Schedules[i].state != 'a') {
                 houselog_event ("PLUG", Schedules[i].plug, "SCHEDULED",
-                                "ON FOR %d MINUTES", duration);
+                                "ON FOR %d MINUTES", (duration+30)/60);
                 Schedules[i].state = 'a';
             }
         } else {

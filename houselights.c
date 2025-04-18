@@ -44,6 +44,7 @@
 #include "houseconfig.h"
 #include "housediscover.h"
 #include "housedepositor.h"
+#include "housealmanac.h"
 
 #include "houselights_plugs.h"
 #include "houselights_schedule.h"
@@ -62,6 +63,7 @@ static const char *lights_status (const char *method, const char *uri,
                         houselog_host(), houseportal_server(), (long)time(0));
 
     cursor += houselights_plugs_status (buffer+cursor, sizeof(buffer)-cursor);
+    cursor += housealmanac_status (buffer+cursor, sizeof(buffer)-cursor);
     cursor += snprintf (buffer+cursor, sizeof(buffer)-cursor, "}}");
     echttp_content_type_json ();
     return buffer;
@@ -182,6 +184,7 @@ static void lights_background (int fd, int mode) {
     houselights_plugs_periodic(now);
     houselights_schedule_periodic(now);
     housediscover (now);
+    housealmanac_background (now);
     houselog_background (now);
     housedepositor_periodic (now);
 }

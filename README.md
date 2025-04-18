@@ -7,6 +7,8 @@ See the [gallery](https://github.com/pascal-fb-martin/houselights/blob/main/gall
 
 Examples of control web services compatible with the server  are [orvibo](https://github.com/pascal-fb-martin/orvibo), [HouseKasa](https://github.com/pascal-fb-martin/housekasa) and [HouseRelays](https://github.com/pascal-fb-martin/houserelays).
 
+Schedule times can be provided as time of day (format HH:MM), relative time after sunset (format +HH:MM) or relative time before sunrise (format -HH:MM).
+
 ## Installation
 * Install the OpenSSL development package(s).
 * Install [echttp](https://github.com/pascal-fb-martin/echttp).

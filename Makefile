@@ -23,7 +23,15 @@ dev:
 
 # Distribution agnostic file installation -----------------------
 
-install-files:
+install-ui:
+	mkdir -p $(SHARE)/public/lights
+	chmod 755 $(SHARE) $(SHARE)/public $(SHARE)/public/lights
+	cp public/* $(SHARE)/public/lights
+	chown root:root $(SHARE)/public/lights/*
+	chmod 644 $(SHARE)/public/lights/*
+	touch /etc/default/lights
+
+install-files: install-ui
 	mkdir -p /usr/local/bin
 	mkdir -p /var/lib/house
 	mkdir -p /etc/house
@@ -31,12 +39,6 @@ install-files:
 	cp houselights /usr/local/bin
 	chown root:root /usr/local/bin/houselights
 	chmod 755 /usr/local/bin/houselights
-	mkdir -p $(SHARE)/public/lights
-	chmod 755 $(SHARE) $(SHARE)/public $(SHARE)/public/lights
-	cp public/* $(SHARE)/public/lights
-	chown root:root $(SHARE)/public/lights/*
-	chmod 644 $(SHARE)/public/lights/*
-	touch /etc/default/lights
 
 uninstall-files:
 	rm -f /usr/local/bin/houselights

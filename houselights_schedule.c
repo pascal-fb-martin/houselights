@@ -239,6 +239,8 @@ void houselights_schedule_periodic (time_t now) {
     t.tm_hour = t.tm_min = t.tm_sec = 0;
     time_t base = mktime (&t);
 
+    DEBUG ("============== Periodic check on day of week %d (mask 0x%x) at %s", today, (1 << today), ctime (&now));
+
     if ((now % 300) <= 30) { // Re-evaluate every 5 minutes.
         struct timeval tv;
         gettimeofday (&tv, 0);
@@ -253,6 +255,9 @@ void houselights_schedule_periodic (time_t now) {
         time_t on = houselights_schedule_adjust (base, &(Schedules[i].on));
         time_t off = houselights_schedule_adjust (base, &(Schedules[i].off));
 
+        DEBUG ("Schedule for %s: on %s", Schedules[i].plug, ctime (&on));
+        DEBUG ("Schedule for %s: off %s", Schedules[i].plug, ctime (&off));
+        DEBUG ("Schedule for %s: days 0x%x", Schedules[i].days);
         int duration = 0;
 
         if (on < off) {
@@ -261,10 +266,11 @@ void houselights_schedule_periodic (time_t now) {
             if (now >= on && now < off) {
                 if (Schedules[i].days & (1 << today)) {
                     duration = (int)(off - now);
+                    DEBUG ("Activated (on <= now < off)\n");
                 }
             }
         } else  if (on > off) {
-            // his can happen if the interval crosses midnight. Two cases:
+            // This can happen if the interval crosses midnight. Two cases:
             // - evening: active from on to midnight (real off is tomorrow).
             // - morning: active from midnight to off (real on was yesterday).
             // Restriction: durations longer than 12h are not supported.
@@ -273,12 +279,14 @@ void houselights_schedule_periodic (time_t now) {
                 // Current time is between on and midnight.
                 if (Schedules[i].days & (1 << today)) {
                     duration = (int)(off + (24*60*60) - now);
+                    DEBUG ("Activated (evening, on <= now)\n");
                 }
             } else if ((hour < 12) && (now < off)) {
                 // Current time is between midnight and off.
                 // This schedule started yesterday, so this is the reference.
                 if (Schedules[i].days & (1 << yesterday)) {
                     duration = (int)(off - now);
+                    DEBUG ("Activated (morning, now < off)\n");
                 }
             }
         }

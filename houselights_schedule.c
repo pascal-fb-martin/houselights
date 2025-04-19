@@ -188,6 +188,16 @@ void houselights_schedule_enable (void) {
 
 void houselights_schedule_disable (void) {
     ScheduleDisabled = 1;
+
+    // Cancel all active schedules.
+    int i;
+    for (i = 0; i < SchedulesCount; ++i) {
+        if (Schedules[i].state != 'i') {
+            houselog_event ("PLUG", Schedules[i].plug,
+                            "INACTIVE", "SCHEDULE DISABLED");
+            Schedules[i].state = 'i';
+        }
+    }
 }
 
 
@@ -301,13 +311,14 @@ void houselights_schedule_periodic (time_t now) {
         if (duration > 0) {
             houselights_plugs_on (Schedules[i].plug, 40, 0);
             if (Schedules[i].state != 'a') {
-                houselog_event ("PLUG", Schedules[i].plug, "SCHEDULED",
-                                "ON FOR %d MINUTES", (duration+30)/60);
+                houselog_event ("PLUG", Schedules[i].plug, "ACTIVE",
+                                "SCHEDULED FOR %d MINUTES", (duration+30)/60);
                 Schedules[i].state = 'a';
             }
         } else {
             if (Schedules[i].state != 'i') {
-                houselog_event ("PLUG", Schedules[i].plug, "SCHEDULED", "OFF");
+                houselog_event ("PLUG", Schedules[i].plug,
+                                "INACTIVE", "END OF SCHEDULE");
                 Schedules[i].state = 'i';
             }
         }

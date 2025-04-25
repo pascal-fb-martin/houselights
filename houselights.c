@@ -91,6 +91,7 @@ static const char *lights_set (const char *method, const char *uri,
     const char *name = echttp_parameter_get("device");
     const char *state = echttp_parameter_get("state");
     const char *pulsep = echttp_parameter_get("pulse");
+    const char *cause = echttp_parameter_get("cause");
 
     if (!name) {
         echttp_error (404, "missing device name");
@@ -107,9 +108,9 @@ static const char *lights_set (const char *method, const char *uri,
             echttp_error (400, "invalid pulse value");
             return "";
         }
-        houselights_plugs_on (name, pulse, 1);
+        houselights_plugs_on (name, pulse, 1, cause);
     } else if (!strcmp(state, "off")) {
-        houselights_plugs_off (name, 1);
+        houselights_plugs_off (name, 1, cause);
     } else {
         echttp_error (400, "invalid state value");
         return "";

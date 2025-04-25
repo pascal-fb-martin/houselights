@@ -33,8 +33,9 @@
  *
  * A plug that is not known to any active web service is eventually removed.
  *
- * void houselights_plugs_on  (const char *name, int pulse);
- * void houselights_plugs_off (const char *name);
+ * void houselights_plugs_on
+ *          (const char *name, int pulse, int manual, const char *cause);
+ * void houselights_plugs_off (const char *name, int manual, const char *cause);
  *
  *    Control one plug on of off. Note that, since these are lights, we do
  *    not apply a pulse on the 'off' state. The pulse is meant to protect
@@ -75,6 +76,7 @@ static int    ProvidersCount = 0;
 typedef struct {
     char *name;
     const char *commanded;
+    char *cause;
     char state[8];
     int countdown;
     int pulse;
@@ -95,7 +97,7 @@ static int       PlugsCount = 0;
 #define PLUG_ON_LIMIT (8*60*60)    // do not set a light on for longer
 #define PLUG_CONTROL_EXPIRATION 60 // Do not retry for longer than this.
 
-static void houselights_plugs_submit (int plug);
+static void houselights_plugs_submit (int plug, int manual, const char *cause);
 
 static int houselights_plugs_search (const char *name) {
     int i;
@@ -123,6 +125,7 @@ static int houselights_plugs_search (const char *name) {
     Plugs[free].state[0] = 0;
     Plugs[free].pulse = 0;
     Plugs[free].manual = 0;
+    Plugs[free].cause = 0;
     Plugs[free].is_light = 0;
     Plugs[free].status = 'u';
     Plugs[free].url[0] = 0;
@@ -244,7 +247,8 @@ static void houselights_plugs_discovery (const char *provider,
            if (houselights_plugs_pending (plug)) {
                houselog_event ("PLUG", Plugs[plug].name, "RETRY",
                                "%s", Plugs[plug].commanded);
-               houselights_plugs_submit (plug);
+               houselights_plugs_submit
+                   (plug, Plugs[plug].manual, Plugs[plug].cause);
            }
        }
 
@@ -334,7 +338,7 @@ static void houselights_plugs_controlled
    houselights_plugs_discovery (plug->url, data, length);
 }
 
-static void houselights_plugs_submit (int plug) {
+static void houselights_plugs_submit (int plug, int manual, const char *cause) {
 
     static char url[256];
 
@@ -352,11 +356,12 @@ static void houselights_plugs_submit (int plug) {
 
     echttp_encoding_escape (Plugs[plug].name, encoded, sizeof(encoded));
 
-    snprintf (url, sizeof(url), "%s/set?point=%s&state=%s&pulse=%d",
+    snprintf (url, sizeof(url), "%s/set?point=%s&state=%s&pulse=%d&cause=%s",
               Plugs[plug].url,
               encoded,
               Plugs[plug].commanded,
-              pulse);
+              pulse,
+              cause);
     const char *error = echttp_client ("GET", url);
     if (error) {
         houselog_trace (HOUSE_FAILURE, Plugs[plug].name, "cannot create socket for %s, %s", url, error);
@@ -367,19 +372,23 @@ static void houselights_plugs_submit (int plug) {
     return;
 }
 
-static void houselights_plugs_set (const char *name,
-                                   const char *state, int pulse, int manual) {
+static void houselights_plugs_set (const char *name, const char *state,
+                                   int pulse, int manual, const char *cause) {
 
     int plug = houselights_plugs_search (name);
     if (plug < 0) return;
 
+    if (!cause) cause = manual?"MANUAL":"SCHEDULE";
+
     time_t now = time(0);
     DEBUG ("%ld: Start plug %s for %d seconds (%s)\n",
-           (long)now, Plugs[plug].name, pulse, manual?"manual":"scheduled");
+           (long)now, Plugs[plug].name, pulse, cause);
 
     Plugs[plug].requested = now;
     Plugs[plug].commanded = state;
     Plugs[plug].manual = manual;
+    if (Plugs[plug].cause) free (Plugs[plug].cause);
+    Plugs[plug].cause = strdup(cause);
     if (Plugs[plug].status == 'i') Plugs[plug].status = 'a';
 
     if (pulse <= 0) {
@@ -400,17 +409,18 @@ static void houselights_plugs_set (const char *name,
                             "%s", Plugs[plug].commanded);
         }
     }
-    houselights_plugs_submit (plug);
+    houselights_plugs_submit (plug, manual, cause);
 }
 
-void houselights_plugs_on (const char *name, int pulse, int manual) {
+void houselights_plugs_on
+        (const char *name, int pulse, int manual, const char *cause) {
 
-    houselights_plugs_set (name, "on", pulse, manual);
+    houselights_plugs_set (name, "on", pulse, manual, cause);
 }
 
-void houselights_plugs_off (const char *name, int manual) {
+void houselights_plugs_off (const char *name, int manual, const char *cause) {
 
-    houselights_plugs_set (name, "off", 0, manual);
+    houselights_plugs_set (name, "off", 0, manual, cause);
 }
 
 void houselights_plugs_periodic (time_t now) {

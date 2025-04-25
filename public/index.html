@@ -37,7 +37,8 @@ function controlClick () {
     var device = encodeURIComponent(this.controlName);
     var state = this.controlState;
     var command = new XMLHttpRequest();
-    command.open("GET", "/lights/set?device="+device+"&state="+state);
+    command.open
+        ("GET", "/lights/set?device="+device+"&state="+state+"&cause=MANUAL");
     command.onreadystatechange = function () {
         if (command.readyState === 4 && command.status === 200) {
             lightsUpdateStatus (JSON.parse(command.responseText));

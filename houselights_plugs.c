@@ -246,7 +246,8 @@ static void houselights_plugs_discovery (const char *provider,
            //
            if (houselights_plugs_pending (plug)) {
                houselog_event ("PLUG", Plugs[plug].name, "RETRY",
-                               "%s", Plugs[plug].commanded);
+                               "%s (%s)",
+                               Plugs[plug].commanded, Plugs[plug].cause);
                houselights_plugs_submit
                    (plug, Plugs[plug].manual, Plugs[plug].cause);
            }
@@ -403,10 +404,12 @@ static void houselights_plugs_set (const char *name, const char *state,
     if (manual) { // Scheduled controls are logged by the scheduler
         if (pulse) {
             houselog_event ("PLUG", Plugs[plug].name, "CONTROLLED",
-                            "%s FOR %d SECONDS", Plugs[plug].commanded, pulse);
+                            "%s FOR %d SECONDS (%s)",
+                            Plugs[plug].commanded, pulse, Plugs[plug].cause);
         } else {
             houselog_event ("PLUG", Plugs[plug].name, "CONTROLLED",
-                            "%s", Plugs[plug].commanded);
+                            "%s (%s)",
+                            Plugs[plug].commanded, Plugs[plug].cause);
         }
     }
     houselights_plugs_submit (plug, manual, cause);

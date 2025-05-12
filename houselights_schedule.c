@@ -300,6 +300,7 @@ void houselights_schedule_periodic (time_t now) {
                 }
             }
         }
+        if (duration > 12*60*60) continue; // Ignore when over 12h.
 
         // If the schedule is active, maintain the plugs on until the next
         // evaluation (plus a 10 seconds grace period to avoid flickering).

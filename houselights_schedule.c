@@ -281,8 +281,8 @@ void houselights_schedule_periodic (time_t now) {
                         // FIXME: the off time is for tomorrow.
                         // An issue with which sunrise day is used.
                         // Short term solution: fix the off reference.
-                        off -= 12*60*60;
-                        duration -= 12*60*60;
+                        off -= 24*60*60;
+                        duration -= 24*60*60;
                         if (now >= off) {
                             DEBUG ("Cancel activation: off is tomorrow\n");
                             duration = 0;

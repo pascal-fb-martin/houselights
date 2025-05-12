@@ -277,6 +277,17 @@ void houselights_schedule_periodic (time_t now) {
                 if (Schedules[i].days & (1 << today)) {
                     duration = (int)(off - now);
                     DEBUG ("Activated (on <= now < off)\n");
+                    if (duration > 12*60*60) {
+                        // FIXME: the off time is for tomorrow.
+                        // An issue with which sunrise day is used.
+                        // Short term solution: fix the off reference.
+                        off -= 12*60*60;
+                        duration -= 12*60*60;
+                        if (now >= off) {
+                            DEBUG ("Cancel activation: off is tomorrow\n");
+                            duration = 0;
+                        }
+                    }
                 }
             }
         } else  if (on > off) {

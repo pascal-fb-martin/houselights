@@ -125,15 +125,17 @@ static void houselights_schedule_import (const char *ascii, LightTime *t) {
     if (t->hour < 0 || t->hour > 23) t->hour = 0;
 }
 
-static time_t houselights_schedule_adjust (time_t base, LightTime *t) {
+static time_t houselights_schedule_adjust (time_t base, LightTime *t, int ready) {
 
     // It is OK if minutes < 0. For example 12:-20 is "20mn before 12".
     int delta = (t->hour * 3600) + (t->minutes * 60) + LightsRandom;
 
     if (t->base == '-') {
-        return housealmanac_sunrise() - delta;
+        if (!ready) return 0;
+        return housealmanac_tonight_sunrise() - delta;
     } else if (t->base == '+') {
-        return housealmanac_sunset() + delta;
+        if (!ready) return 0;
+        return housealmanac_tonight_sunset() + delta;
     }
     return base + delta;
 }
@@ -236,8 +238,11 @@ void houselights_schedule_periodic (time_t now) {
     static time_t LastCall = 0;
     int i;
 
+    // Start scheduling even if there is no almanac data available.
+    // However any schedule that references almanac data will be ignored
+    // if none is available.
+    int ready = housealmanac_tonight_ready();
     if (ScheduleDisabled) return;
-    if (!housealmanac_ready()) return; // Start scheduling only when ready.
 
     if (now < LastCall + 30) return; // Re-evaluate twice a minute.
     LastCall = now;
@@ -257,13 +262,16 @@ void houselights_schedule_periodic (time_t now) {
         LightsRandom = (tv.tv_usec % 600) - 300; // Range -5 to 5 minutes.
     }
 
+    time_t on;
+    time_t off;
     for (i = 0 ; i < SchedulesCount; ++i) {
 
         if (!Schedules[i].id) continue;
         if (!Schedules[i].plug) continue;
 
-        time_t on = houselights_schedule_adjust (base, &(Schedules[i].on));
-        time_t off = houselights_schedule_adjust (base, &(Schedules[i].off));
+        on = houselights_schedule_adjust (base, &(Schedules[i].on), ready);
+        off = houselights_schedule_adjust (base, &(Schedules[i].off), ready);
+        if ((on == 0) || (off == 0)) continue; // Cannot adjust this interval.
 
         DEBUG ("Schedule for %s: on %s", Schedules[i].plug, ctime (&on));
         DEBUG ("Schedule for %s: off %s", Schedules[i].plug, ctime (&off));
@@ -290,28 +298,19 @@ void houselights_schedule_periodic (time_t now) {
                     }
                 }
             }
-        } else  if (on > off) {
-            // This can happen if the interval crosses midnight. Two cases:
-            // - evening: active from on to midnight (real off is tomorrow).
-            // - morning: active from midnight to off (real on was yesterday).
-            // Restriction: durations longer than 12h are not supported.
-            //
-            if ((hour > 12) && (now >= on)) {
-                // Current time is between on and midnight.
-                if (Schedules[i].days & (1 << today)) {
-                    duration = (int)(off + (24*60*60) - now);
-                    DEBUG ("Activated (evening, on <= now)\n");
-                }
-            } else if ((hour < 12) && (now < off)) {
-                // Current time is between midnight and off.
-                // This schedule started yesterday, so this is the reference.
-                if (Schedules[i].days & (1 << yesterday)) {
-                    duration = (int)(off - now);
-                    DEBUG ("Activated (morning, now < off)\n");
-                }
-            }
+        } else {
+            houselog_trace (HOUSE_FAILURE, "TIME",
+                            "ON at %lld > OFF at %lld for %s",
+                            (long long)on, (long long)off, Schedules[i].plug);
+            continue; // Ignore this odd case.
         }
-        if (duration > 12*60*60) continue; // Ignore when over 12h.
+
+        if (duration > 12*60*60) {
+            houselog_trace (HOUSE_FAILURE, "TIME", "Duration %d:%d for %s",
+                            duration/(60*60), (duration/60)%60,
+                            Schedules[i].plug);
+            continue; // Ignore when over 12h.
+        }
 
         // If the schedule is active, maintain the plugs on until the next
         // evaluation (plus a 10 seconds grace period to avoid flickering).

@@ -49,8 +49,6 @@
 #include "houselights_plugs.h"
 #include "houselights_schedule.h"
 
-static int use_houseportal = 0;
-
 
 static const char *lights_status (const char *method, const char *uri,
                                   const char *data, int length) {
@@ -169,19 +167,9 @@ static const char *lights_delete (const char *method, const char *uri,
 
 static void lights_background (int fd, int mode) {
 
-    static time_t LastRenewal = 0;
     time_t now = time(0);
 
-    if (use_houseportal) {
-        static const char *path[] = {"lights:/lights"};
-        if (now >= LastRenewal + 60) {
-            if (LastRenewal > 0)
-                houseportal_renew();
-            else
-                houseportal_register (echttp_port(4), path, 1);
-            LastRenewal = now;
-        }
-    }
+    houseportal_background (now);
     houselights_plugs_periodic(now);
     houselights_schedule_periodic(now);
     housediscover (now);
@@ -218,8 +206,9 @@ int main (int argc, const char **argv) {
 
     argc = echttp_open (argc, argv);
     if (echttp_dynamic_port()) {
+        static const char *path[] = {"lights:/lights"};
         houseportal_initialize (argc, argv);
-        use_houseportal = 1;
+        houseportal_declare (echttp_port(4), path, 1);
     }
     houselog_initialize ("lights", argc, argv);
 

@@ -1,10 +1,37 @@
+# HouseLights - a simple web server to control lights.
+#
+# Copyright 2025, Pascal Martin
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor,
+# Boston, MA  02110-1301, USA.
+#
+# WARNING
+#
+# This Makefile depends on echttp and houseportal (dev) being installed.
+
+prefix=/usr/local
+SHARE=$(prefix)/share/house
+
+INSTALL=/usr/bin/install
+
+HAPP=houselights
+
+# Local build ---------------------------------------------------
 
 OBJS= houselights_plugs.o houselights_schedule.o houselights.o
 LIBOJS=
-
-SHARE=/usr/local/share/house
-
-# Local build ---------------------------------------------------
 
 all: houselights
 
@@ -23,92 +50,24 @@ dev:
 
 # Distribution agnostic file installation -----------------------
 
-install-ui:
-	mkdir -p $(SHARE)/public/lights
-	chmod 755 $(SHARE) $(SHARE)/public $(SHARE)/public/lights
-	cp public/* $(SHARE)/public/lights
-	chown root:root $(SHARE)/public/lights/*
-	chmod 644 $(SHARE)/public/lights/*
-	touch /etc/default/lights
+install-ui: install-preamble
+	$(INSTALL) -m 0755 -d $(DESTDIR)$(SHARE)/public/lights
+	$(INSTALL) -m 0644 public/* $(DESTDIR)$(SHARE)/public/lights
 
-install-files: install-ui
-	mkdir -p /usr/local/bin
-	mkdir -p /var/lib/house
-	mkdir -p /etc/house
-	rm -f /usr/local/bin/houselights
-	cp houselights /usr/local/bin
-	chown root:root /usr/local/bin/houselights
-	chmod 755 /usr/local/bin/houselights
+install-app: install-ui
+	$(INSTALL) -m 0755 -s houselights $(DESTDIR)$(prefix)/bin
+	touch $(DESTDIR)/etc/default/lights
 
-uninstall-files:
-	rm -f /usr/local/bin/houselights
-	rm -rf $(SHARE)/public/lights
+uninstall-app:
+	rm -rf $(DESTDIR)$(SHARE)/public/lights
+	rm -f $(DESTDIR)$(prefix)/bin/houselights
+
+purge-app:
 
 purge-config:
 	rm -rf /etc/house/lights.config /etc/default/lights
 
-# Distribution agnostic systemd support -------------------------
+# System installation. ------------------------------------------
 
-install-systemd:
-	cp systemd.service /lib/systemd/system/houselights.service
-	chown root:root /lib/systemd/system/houselights.service
-	systemctl daemon-reload
-	systemctl enable houselights
-	systemctl start houselights
-
-uninstall-systemd:
-	if [ -e /etc/init.d/houselights ] ; then systemctl stop houselights ; systemctl disable houselights ; rm -f /etc/init.d/houselights ; fi
-	if [ -e /lib/systemd/system/houselights.service ] ; then systemctl stop houselights ; systemctl disable houselights ; rm -f /lib/systemd/system/houselights.service ; systemctl daemon-reload ; fi
-
-stop-systemd: uninstall-systemd
-
-# Distribution agnostic runit support ---------------------------
-
-install-runit:
-	mkdir -p /etc/sv/houselights
-	cp runit.run /etc/sv/houselights/run
-	chown root:root /etc/sv/houselights /etc/sv/houselights/run
-	chmod 755 /etc/sv/houselights/run
-	rm -f /etc/runit/runsvdir/default/houselights
-	ln -s /etc/sv/houselights /etc/runit/runsvdir/default/houselights
-	/bin/sleep 5
-	/usr/bin/sv up houselights
-
-uninstall-runit:
-	if [ -e /etc/sv/houselights ] ; then /usr/bin/sv shutdown houselights ; rm -rf /etc/sv/houselights ; rm -f /etc/runit/runsvdir/default/houselights ; /bin/sleep 5 ; fi
-
-stop-runit:
-	if [ -e /etc/sv/houselights ] ; then /usr/bin/sv shutdown houselights ; fi
-
-# Debian GNU/Linux install --------------------------------------
-
-install-debian: stop-systemd install-files install-systemd
-
-uninstall-debian: uninstall-systemd uninstall-files
-
-purge-debian: uninstall-debian purge-config
-
-# Devuan GNU/Linux install (using runit) ------------------------
-
-install-devuan: stop-runit install-files install-runit
-
-uninstall-devuan: uninstall-runit uninstall-files
-
-purge-devuan: uninstall-devuan purge-config
-
-# Void Linux install --------------------------------------------
-
-install-void: stop-runit install-files install-runit
-
-uninstall-void: uninstall-runit uninstall-files
-
-purge-void: uninstall-void purge-config
-
-# Default install (Debian GNU/Linux) ----------------------------
-
-install: install-debian
-
-uninstall: uninstall-debian
-
-purge: purge-debian
+include $(SHARE)/install.mak
 

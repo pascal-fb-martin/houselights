@@ -1,0 +1,19 @@
+Source: houselights
+Version: 1.0
+Section: Web servers
+Maintainer: Pascal Martin <pascal.fb.martin@gmail.com>
+Priority: optional
+Homepage: https://github.com/pascal-fb-martin/houselights
+Standard-Version: 4.7.0
+Package: houselights
+Architecture: {{arch}}
+Depends: 
+Description: A House service to schedule and control lights
+ HouseLights is part of the House suite of web services.
+ .
+ HouseLights provides a single web UI to control and schedule lights,
+ independent of the equipment protocol.
+ .
+ This service interfaces with all detected control services to retrieve
+ the list of devices and access them.
+

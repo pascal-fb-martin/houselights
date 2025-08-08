@@ -26,3 +26,19 @@ The lights schedule can be edited from the HouseLights web interface.
 
 The web interface includes a Panel page (/lights/panel.html) that has no menu and only shows the current lights, each as one big button to tun the device on and off. This page is meant for a phone screen, typically a shortcut on the phone's home screen. (Because HousePortal redirects the URL, it is recommended to turn the phone in airplane mode when creating the shortcut from the web browser.)
 
+## Debian Packaging
+
+The provided Makefile supports building private Debian packages. These are _not_ official packages:
+
+- They do not follow all Debian policies.
+
+- They are not built using Debian standard conventions and tools.
+
+- The packaging is not separate from the upstream sources, and there is
+  no source package.
+
+To build a Debian package, use the `debian-package` target:
+```
+make debian-package
+```
+

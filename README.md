@@ -1,6 +1,9 @@
 # houselights
+
 A web server to control lights
+
 ## Overview
+
 This web server controls lights based on a schedule. The actual control of the lights is provided by a "control" web service and the location for each light is retrieved based on the [HousePortal](https://github.com/pascal-fb-martin/houseportal) discovery mechanism.
 
 See the [gallery](https://github.com/pascal-fb-martin/houselights/blob/main/gallery/README.md) for a view of HouseLights' web UI.
@@ -10,6 +13,7 @@ Examples of control web services compatible with the server  are [orvibo](https:
 Schedule times can be provided as time of day (format HH:MM), relative time after sunset (format +HH:MM) or relative time before sunrise (format -HH:MM).
 
 ## Installation
+
 * Install the OpenSSL development package(s).
 * Install [echttp](https://github.com/pascal-fb-martin/echttp).
 * Install [houseportal](https://github.com/pascal-fb-martin/houseportal).
@@ -20,6 +24,7 @@ Schedule times can be provided as time of day (format HH:MM), relative time afte
 You will need to have at least one control service installed and running.
 
 ## Configuration
+
 The lights schedule can be edited from the HouseLights web interface.
 
 ## Panel
@@ -38,6 +43,7 @@ The provided Makefile supports building private Debian packages. These are _not_
   no source package.
 
 To build a Debian package, use the `debian-package` target:
+
 ```
 make debian-package
 ```

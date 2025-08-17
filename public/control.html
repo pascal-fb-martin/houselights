@@ -59,7 +59,7 @@ function lightsShowStatus (response) {
         var tag = plug.name.replace (/ /g,'-')
         if (document.getElementById ('state-'+tag)) continue; // Already there.
 
-        var outer = document.createElement("tr");
+        var outer = iolist.insertRow();
 
         var inner = document.createElement("td");
         var label = document.createElement("span");
@@ -84,8 +84,6 @@ function lightsShowStatus (response) {
         button.controlstate = 'on';
         inner.appendChild(button);
         outer.appendChild(inner);
-
-        iolist.appendChild(outer);
     }
 }
 

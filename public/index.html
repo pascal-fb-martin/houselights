@@ -49,24 +49,21 @@ function controlClick () {
 
 function lightsShowStatus (response) {
    var iolist = document.getElementById ('iolist');
-   var remove = document.getElementsByClassName ('removeThisLine');
-   while (remove.length > 0) {
-       iolist.removeChild(remove[0]);
+   for (var i = iolist.rows.length - 1; i >= 0; --i) {
+       iolist.deleteRow(i);
    }
    var plugs = response.lights.plugs;
    var columns = Math.ceil (window.innerWidth / 200);
    var width = Math.floor (100 / columns);
    var cursor = 0;
    var firstline = true;
-   var outer = document.createElement("tr");
+   var outer = iolist.insertRow();
    for (var i = 0; i < plugs.length; i++) {
         var plug = plugs[i];
         var tag = plug.name.replace (/ /g,'-')
 
         if (cursor >= columns) {
-           outer.className = "removeThisLine";
-           iolist.appendChild(outer);
-           outer = document.createElement("tr");
+           outer = iolist.insertRow();
            cursor = 0;
            firstline = false;
         }
@@ -84,8 +81,6 @@ function lightsShowStatus (response) {
         inner.appendChild(button);
         outer.appendChild(inner);
     }
-    outer.className = "removeThisLine";
-    iolist.appendChild(outer);
 }
 
 function lightsStatus () {

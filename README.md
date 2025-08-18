@@ -1,4 +1,4 @@
-# houselights
+# HouseLights
 
 A web server to control lights
 

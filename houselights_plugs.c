@@ -154,7 +154,6 @@ static int houselights_plugs_pending (int plug) {
     if (Plugs[plug].requested + PLUG_CONTROL_EXPIRATION < now) return 0;
     if ((Plugs[plug].deadline > 0) && (Plugs[plug].deadline <= now)) return 0;
     if (!Plugs[plug].commanded) return 0;
-    if (!Plugs[plug].state) return 0;
     if (!strcmp (Plugs[plug].state, Plugs[plug].commanded)) return 0;
     if (!strcmp (Plugs[plug].state, "silent")) return 0;
 
@@ -169,8 +168,6 @@ static void houselights_plugs_discovery (const char *provider,
    char path[256];
    int  count = 100;
    int  i;
-
-   time_t now = time(0);
 
    // Analyze the answer and retrieve the control points matching our plugs.
    const char *error = echttp_json_parse (data, tokens, &count);
@@ -341,7 +338,7 @@ static void houselights_plugs_controlled
 
 static void houselights_plugs_submit (int plug, int manual, const char *cause) {
 
-    static char url[256];
+    static char url[512];
 
     int pulse = 0;
     time_t now = time(0);

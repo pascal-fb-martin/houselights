@@ -248,9 +248,7 @@ void houselights_schedule_periodic (time_t now) {
     LastCall = now;
 
     struct tm t = *localtime (&now);
-    int hour = t.tm_hour;
     int today = t.tm_wday;
-    int yesterday = (today <= 0) ? 6 : today - 1;
     t.tm_hour = t.tm_min = t.tm_sec = 0;
     time_t base = mktime (&t);
 
@@ -275,7 +273,7 @@ void houselights_schedule_periodic (time_t now) {
 
         DEBUG ("Schedule for %s: on %s", Schedules[i].plug, ctime (&on));
         DEBUG ("Schedule for %s: off %s", Schedules[i].plug, ctime (&off));
-        DEBUG ("Schedule for %s: days 0x%x", Schedules[i].days);
+        DEBUG ("Schedule for %s: days 0x%x", Schedules[i].plug, Schedules[i].days);
         int duration = 0;
 
         if (on < off) {

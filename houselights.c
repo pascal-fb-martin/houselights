@@ -50,15 +50,19 @@
 #include "houselights_schedule.h"
 
 
+static int lights_header (char *buffer, int size) {
+
+    return snprintf (buffer, size,
+                     "{\"host\":\"%s\",\"proxy\":\"%s\","
+                          "\"timestamp\":%lld,\"lights\":{",
+                     houselog_host(), houseportal_server(),
+                     (long long)time(0));
+}
+
 static const char *lights_status (const char *method, const char *uri,
                                   const char *data, int length) {
     static char buffer[65537];
-    int cursor = 0;
-
-    cursor += snprintf (buffer, sizeof(buffer),
-                        "{\"host\":\"%s\",\"proxy\":\"%s\",\"timestamp\":%d,"
-                            "\"lights\":{",
-                        houselog_host(), houseportal_server(), (long)time(0));
+    int cursor = lights_header (buffer, sizeof(buffer));
 
     cursor += houselights_plugs_status (buffer+cursor, sizeof(buffer)-cursor);
     cursor += housealmanac_status (buffer+cursor, sizeof(buffer)-cursor);
@@ -70,12 +74,7 @@ static const char *lights_status (const char *method, const char *uri,
 static const char *lights_schedule (const char *method, const char *uri,
                                     const char *data, int length) {
     static char buffer[65537];
-    int cursor = 0;
-
-    cursor += snprintf (buffer, sizeof(buffer),
-                        "{\"host\":\"%s\",\"proxy\":\"%s\",\"timestamp\":%d,"
-                            "\"lights\":{",
-                        houselog_host(), houseportal_server(), (long)time(0));
+    int cursor = lights_header (buffer, sizeof(buffer));
 
     cursor += houselights_schedule_status (buffer+cursor, sizeof(buffer)-cursor);
     cursor += snprintf (buffer+cursor, sizeof(buffer)-cursor, "}}");
@@ -182,7 +181,7 @@ static void lights_config_listener (const char *name, time_t timestamp,
                                     const char *data, int length) {
     houselog_event ("SYSTEM", "CONFIG", "LOAD", "FROM DEPOT %s", name);
     const char *error = houseconfig_update (data);
-    houselights_schedule_refresh ();
+    if (!error) houselights_schedule_refresh ();
 }
 
 static void lights_protect (const char *method, const char *uri) {

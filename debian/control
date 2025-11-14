@@ -1,5 +1,5 @@
 Source: houselights
-Version: 2.0
+Version: 2.1
 Section: Web servers
 Maintainer: Pascal Martin <pascal.fb.martin@gmail.com>
 Priority: optional
@@ -7,7 +7,7 @@ Homepage: https://github.com/pascal-fb-martin/houselights
 Standard-Version: 4.7.0
 Package: houselights
 Architecture: {{arch}}
-Depends: houseportal
+Depends: houseportal (>= 2.9)
 Description: A House service to schedule and control lights
  HouseLights is part of the House suite of web services.
  .

@@ -8,8 +8,6 @@ var LightsCount = 0;
 
 function lightsUpdateStatus (response) {
 
-    document.getElementById('portal').href = 'http://'+response.proxy+'/index.html';
-
     document.getElementsByTagName('title')[0].innerHTML =
         response.host+' - Ligths Dashboard';
 
@@ -116,21 +114,21 @@ window.onresize = resizeButtons;
    <title>Lights Dashboard</title>
 </head>
 <body>
-   <table class="housetopcontainer">
-   <tr><td>
-   <table class="housetop">
+   <header>
+   <table>
    <tr>
-   <td><a id="portal" href="/index.html">Portal</a></td>
    <td><span>Dashboard</span></td>
+   <td><a href="/lights/map.html">Map</a></td>
    <td><a href="/lights/schedules.html">Schedules</a></td>
    <td><a href="/lights/control.html">Controls</a></td>
    <td><a href="/lights/events.html">Events</a></td>
    </tr>
    </table>
-   </td></tr>
-   </table>
+   </header>
+   <section>
    <table id="iolist" border="0">
    </table>
+   </section>
 </body>
 </html>
 

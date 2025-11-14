@@ -48,6 +48,7 @@
 
 #include "houselights_plugs.h"
 #include "houselights_schedule.h"
+#include "houselights_template.h"
 
 
 static int lights_header (char *buffer, int size) {
@@ -226,6 +227,8 @@ int main (int argc, const char **argv) {
 
     echttp_cors_allow_method("GET");
     echttp_protect (0, lights_protect);
+
+    houselights_template_initialize (argc, argv, "/lights/content");
 
     echttp_route_uri ("/lights/schedule", lights_schedule);
     echttp_route_uri ("/lights/status", lights_status);

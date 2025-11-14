@@ -21,9 +21,6 @@ function lightsDelete () {
 
 function lightsShow (response) {
 
-   document.getElementById('portal').href =
-       'http://'+response.proxy+'/index.html';
-
    document.getElementsByTagName('title')[0].innerHTML =
        response.host+' - Lights Schedule';
 
@@ -177,19 +174,18 @@ window.onload = function() {
    <title>Lights Schedule</title>
 </head>
 <body>
-   <table class="housetopcontainer">
-   <tr><td>
-   <table class="housetop">
+   <header>
+   <table>
    <tr>
-   <td><a id="portal" href="/index.html">Portal</a></td>
    <td><a href="/lights/index.html">Dashboard</a></td>
+   <td><a href="/lights/map.html">Map</a></td>
    <td><span>Schedules</span></td>
-   <td><a href="/lights/control.html">Control</a></td>
+   <td><a href="/lights/control.html">Controls</a></td>
    <td><a href="/lights/events.html">Events</a></td>
    </tr>
    </table>
-   </td></tr>
-   </table>
+   </header>
+   <section>
    <table id="schlist" class="housewidetable" border="0">
       <tr>
          <th width="20%">DEVICE</th>
@@ -234,6 +230,7 @@ window.onload = function() {
          <td><button class="modeButton" disabled onclick="doNothing()">Loading..</button></td>
       </tr>
    </table>
+   </section>
 </body>
 </html>
 

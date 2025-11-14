@@ -31,7 +31,11 @@ HCAT=automation
 
 # Local build ---------------------------------------------------
 
-OBJS= houselights_plugs.o houselights_schedule.o houselights.o
+OBJS= houselights_plugs.o \
+      houselights_schedule.o \
+      houselights_template.o \
+      houselights.o
+
 LIBOJS=
 
 all: houselights
@@ -54,8 +58,12 @@ dev:
 install-ui: install-preamble
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(SHARE)/public/lights
 	$(INSTALL) -m 0644 public/* $(DESTDIR)$(SHARE)/public/lights
+	$(INSTALL) -m 0755 -d $(DESTDIR)/var/lib/house/lights
+	$(INSTALL) -m 0644 mapbody.htmt $(DESTDIR)/var/lib/house/lights
+	if [ "x$(DESTDIR)" = "x" ] ; then grep -q '^house:' /etc/passwd && chown -R house:house /var/lib/house/lights /var/cache/house/lights ; rm -rf /var/cache/house/lights/* ; fi
 
 install-runtime: install-preamble
+	$(INSTALL) -m 0755 -d $(DESTDIR)/var/cache/house/lights
 	$(INSTALL) -m 0755 -s houselights $(DESTDIR)$(prefix)/bin
 	touch $(DESTDIR)/etc/default/lights
 
@@ -64,11 +72,16 @@ install-app: install-ui install-runtime
 uninstall-app:
 	rm -rf $(DESTDIR)$(SHARE)/public/lights
 	rm -f $(DESTDIR)$(prefix)/bin/houselights
+	rm -rf $(DESTDIR)/var/lib/house/lights
+	rm -rf $(DESTDIR)/var/cache/house/lights
 
 purge-app:
 
 purge-config:
-	rm -rf /etc/house/lights.config /etc/default/lights
+	rm -rf $(DESTDIR)/etc/house/lights.config
+	rm -rf $(DESTDIR)/etc/default/lights
+	rm -rf $(DESTDIR)/var/lib/house/lights
+	rm -rf $(DESTDIR)/var/cache/house/lights
 
 # Build a private Debian package. -------------------------------
 

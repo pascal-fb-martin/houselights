@@ -27,6 +27,10 @@ You will need to have at least one control service installed and running.
 
 The lights schedule can be edited from the HouseLights web interface.
 
+The list of control points is dynamically retrieved from the House services implementing the `control` interface.
+
+This service supports a graphic map display to control the lights.  That map display requires the presence of a user created `floorplan.svg` file in `/var/lib/house/lights`. This SVG file is typically created using Inkscape. Each SVG element that reflects the state of a point must not have any `stroke` attribute and must have an `id` attribute matching the ID of the point (except for ' ' replaced with '_').
+
 ## Panel
 
 The web interface includes a Panel page (/lights/panel.html) that has no menu and only shows the current lights, each as one big button to tun the device on and off. This page is meant for a phone screen, typically a shortcut on the phone's home screen. (Because HousePortal redirects the URL, it is recommended to turn the phone in airplane mode when creating the shortcut from the web browser.)

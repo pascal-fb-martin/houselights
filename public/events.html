@@ -12,19 +12,18 @@ window.onload = function() {
    <title></title>
 </head>
 <body>
-   <table class="housetopcontainer">
-   <tr><td>
-   <table class="housetop">
+   <header>
+   <table>
    <tr>
-   <td><a id="portal" href="/index.html">Portal</a></td>
    <td><a href="/lights/index.html">Dashboard</a></td>
+   <td><a href="/lights/map.html">Map</a></td>
    <td><a href="/lights/schedules.html">Schedules</a></td>
-   <td><a href="/lights/control.html">Control</a></td>
+   <td><a href="/lights/control.html">Controls</a></td>
    <td><span>Events</span></td>
    </tr>
    </table>
-   </td></tr>
-   </table>
+   </header>
+   <section>
    <table class="housewidetable" id="eventlist" border="0">
       <tr>
          <th width="15%">TIME</th>
@@ -34,6 +33,7 @@ window.onload = function() {
          <th width="45%">DESCRIPTION</th>
       </tr>
    </table>
+   </section>
 </body>
 </html>
 

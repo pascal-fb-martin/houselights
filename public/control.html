@@ -8,8 +8,6 @@ var LightsCount = 0;
 
 function lightsUpdateStatus (response) {
 
-    document.getElementById('portal').href = 'http://'+response.proxy+'/index.html';
-
     document.getElementsByTagName('title')[0].innerHTML =
         response.host+' - Ligths Control';
 
@@ -112,19 +110,18 @@ window.onload = function() {
    <title>Lights Control</title>
 </head>
 <body>
-   <table class="housetopcontainer">
-   <tr><td>
-   <table class="housetop">
+   <header>
+   <table>
    <tr>
-   <td><a id="portal" href="/index.html">Portal</a></td>
    <td><a href="/lights/index.html">Dashboard</a></td>
+   <td><a href="/lights/map.html">Map</a></td>
    <td><a href="/lights/schedules.html">Schedules</a></td>
-   <td><span>Control</span></td>
+   <td><span>Controls</span></td>
    <td><a href="/lights/events.html">Events</a></td>
    </tr>
    </table>
-   </td></tr>
-   </table>
+   </header>
+   <section>
    <table class="housewidetable iolist" border="0">
       <tr>
          <th width="14%">NAME</th>
@@ -132,6 +129,7 @@ window.onload = function() {
          <th width="10%">CONTROL</th>
       </tr>
    </table>
+   </section>
 </body>
 </html>
 

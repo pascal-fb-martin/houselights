@@ -2,9 +2,22 @@
 <head>
 <link rel="stylesheet" href="/house.css">
 <link rel="stylesheet" href="/lights/layout.css">
-<script language="javascript" type="text/javascript">
+<script>
+function lightsStatus () {
+    var command = new XMLHttpRequest();
+    command.open("GET", "/lights/status");
+    command.onreadystatechange = function () {
+        if (command.readyState === 4 && command.status === 200) {
+            var response = JSON.parse(command.responseText);
+            document.getElementsByTagName('title')[0].innerHTML =
+                response.host+' - Ligths Dashboard';
+        }
+    }
+    command.send(null);
+}
 
 window.onload = function() {
+   lightsStatus();
 };
 </script>
 <title>Light Map</title>

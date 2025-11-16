@@ -1,5 +1,12 @@
 <html>
 <head>
+<link rel="stylesheet" href="/lights/animate.css">
+<script src="/lights/animate.js"></script>
+<script>
+window.onload = function() {
+   animateStart('/lights');
+}
+</script>
 </head>
 <body style="margin: 0;">
 <div style="background-color: #355b1eff;">

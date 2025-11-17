@@ -5,6 +5,7 @@ HOUSEAPP=houselights
 case $1 in
     configure|abort-upgrade|abort-deconfigure|abort-remove)
         . /usr/local/share/house/postinstall
+        rm -rf /var/cache/house/lights/*
         ;;
 esac
 

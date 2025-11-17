@@ -75,6 +75,7 @@ static int    ProvidersCount = 0;
 
 typedef struct {
     char *name;
+    char *mode;
     const char *commanded;
     char *cause;
     char state[8];
@@ -119,6 +120,7 @@ static int houselights_plugs_search (const char *name) {
     }
     Plugs[free].name = strdup(name);
     Plugs[free].countdown = MAX_LIFE;
+    Plugs[free].mode = 0;
     Plugs[free].commanded = 0;
     Plugs[free].requested = 0;
     Plugs[free].deadline = 0;
@@ -131,6 +133,13 @@ static int houselights_plugs_search (const char *name) {
     Plugs[free].url[0] = 0;
 
     return free;
+}
+
+static int houselights_plugs_is_output (int plug) {
+    if (!Plugs[plug].mode) return 1; // Default is yes.
+    if (!strcmp (Plugs[plug].mode, "out")) return 1;
+    if (!strcmp (Plugs[plug].mode, "output")) return 1;
+    return 0;
 }
 
 static const char *houselights_plugs_provider_keep (const char *provider) {
@@ -208,6 +217,18 @@ static void houselights_plugs_discovery (const char *provider,
 
        int plug = houselights_plugs_search (inner->key);
        if (plug < 0) continue;
+
+       int mode = echttp_json_search (inner, ".mode");
+       if (mode >= 0) {
+           const char *value = inner[mode].value.string;
+           if ((!Plugs[plug].mode) || strcmp (Plugs[plug].mode, value)) {
+               if (Plugs[plug].mode) free (Plugs[plug].mode);
+               Plugs[plug].mode = strdup (value);
+           }
+       } else if (Plugs[plug].mode) {
+           free (Plugs[plug].mode);
+           Plugs[plug].mode = 0;
+       }
 
        int state = echttp_json_search (inner, ".state");
        if (state >= 0) {
@@ -304,6 +325,8 @@ static void houselights_plugs_prune (time_t now) {
                      ("PLUG", Plugs[i].name, "PRUNE", "FROM %s", Plugs[i].url);
                 free(Plugs[i].name);
                 Plugs[i].name = 0;
+                if (Plugs[i].mode) free (Plugs[i].mode);
+                Plugs[i].mode = 0;
                 Plugs[i].url[0] = 0;
             }
         }
@@ -375,6 +398,10 @@ static void houselights_plugs_set (const char *name, const char *state,
 
     int plug = houselights_plugs_search (name);
     if (plug < 0) return;
+
+    // Only output points can be controlled.
+    //
+    if (!houselights_plugs_is_output (plug)) return;
 
     if (!cause) cause = manual?"MANUAL":"SCHEDULE";
 
@@ -491,6 +518,7 @@ int houselights_plugs_status (char *buffer, int size) {
     for (i = 0; i < PlugsCount; ++i) {
         char s[512];
         char p[256];
+        char m[256];
 
         if (!Plugs[i].name) continue; // Ignore obsolete entries.
 
@@ -505,9 +533,14 @@ int houselights_plugs_status (char *buffer, int size) {
         else
             p[0] = 0;
 
+        if (Plugs[i].mode)
+            snprintf (m, sizeof(m), ",\"mode\":\"%s\"", Plugs[i].mode);
+        else
+            m[0] = 0;
+
         cursor += snprintf (buffer+cursor, size-cursor,
-                            "%s{\"name\":\"%s\",\"status\":\"%c\",\"state\":\"%s\",\"light\":%s%s%s}",
-                            prefix, Plugs[i].name, Plugs[i].status, Plugs[i].state, Plugs[i].is_light?"true":"false", s, p);
+                            "%s{\"name\":\"%s\",\"status\":\"%c\",\"state\":\"%s\",\"light\":%s%s%s%s}",
+                            prefix, Plugs[i].name, Plugs[i].status, Plugs[i].state, Plugs[i].is_light?"true":"false", s, p, m);
         if (cursor >= size) goto overflow;
         prefix = ",";
     }

@@ -10,7 +10,7 @@ function lightsStatus () {
         if (command.readyState === 4 && command.status === 200) {
             var response = JSON.parse(command.responseText);
             document.getElementsByTagName('title')[0].innerHTML =
-                response.host+' - Ligths Dashboard';
+                response.host+' - Ligths Map';
         }
     }
     command.send(null);
@@ -20,7 +20,7 @@ window.onload = function() {
    lightsStatus();
 };
 </script>
-<title>Light Map</title>
+<title>Lights Map</title>
 </head>
 <body>
    <header>

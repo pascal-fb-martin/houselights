@@ -31,21 +31,23 @@ The list of control points is dynamically retrieved from the House services impl
 
 This service supports a graphic map display to control the lights.  That map display requires the presence of a user created `floorplan.svg` file in `/var/lib/house/lights`. This SVG file is typically created using Inkscape (see later).
 
-An HTML page is automatically generated based on this `floorplan.svg` file and cached as `/var/cache/house/lights/mapbody.html`: this later file must be deleted after each change to a `/var/lib/house/lights` file.
+An HTML page is automatically generated based on this `floorplan.svg` file and cached as `/var/cache/house/lights/mapbody.html`. All files in `/var/cache/house/lights` must be deleted after each change to any `/var/lib/house/lights` file.
 
-## Creating a floor plan using Inkscape
+## Creating a floor plan display using Inkscape
 
-A floor plan SVG can be created using Inkscape, but a few conventions must be followed:
+A floor plan SVG display can be created using Inkscape, but a few conventions must be followed:
 
-* Define a background color for the page in `Document Properties`. It is recommended to use `#355b1eff`, which is the background used in the web UI.
+* Define a background color for the page in `Document Properties`. It is recommended to use `#355b1eff`, which is the background color used in the web UI.
 
-* Each SVG element that reflects the state of a point must not have the `stroke` attribute and must have an `id` attribute matching the name of the point (except for ' ' replaced with '_').
+* Each SVG element that is intended to reflect the state of a point must not have the `stroke` attribute (i.e. not have an explicit stroke color), and must have an `id` attribute matching the name of the point except for any ' ' replaced with '_' (Inkscape does this automatically).
 
-* Symbols can be used, but the same "no stroke" rule applies.
+* Symbols can be used, but the same "no stroke" rule applies to all their elements that must be animated. The `id` attribute must then be applied to the `use` element.
 
-* Controls are supported using the `onclick` attribute. This attribute must call the `controlClick` function with the name of the point as its parameter. The `onclick` attribute cannot be assigned to a symbol item (the name of the point is not known at this stage).
+* If multiple elements are to be animated from the same point, they must all be joined into a single group, and the `id` attribute must be applied to the group, not to the elements within that group.
 
-* The Inkscape project must be exported as `plain SVG`, and this plain SVG file is to be installed as `floorplan.svg` in `/var/lib/house/lights`.
+* The Inkscape project must be exported as `plain SVG`, and this plain SVG file must be installed as `floorplan.svg` in `/var/lib/house/lights`.
+
+> The `stroke` and `id` attributes can be modified using the Inkscape's XML Editor.
 
 ## Panel
 

@@ -6,8 +6,16 @@ var RootUrl = "";
 var KnownState = new Object();
 var ChangeToReverse = new Object();
 
+// These are the light states that can be controlled.
 ChangeToReverse["on"] = "off";
 ChangeToReverse["off"] = "on";
+
+function lightsIsControllable (mode) {
+   if (!mode) return 1; // Output is the default.
+   if (mode == "output") return 1;
+   if (mode == "out") return 1;
+   return 0;
+}
 
 function lightsUpdateStatus (response) {
 
@@ -18,7 +26,11 @@ function lightsUpdateStatus (response) {
         var state = plugs[i].state;
         if (KnownState[name] && (KnownState[name] === state)) continue;
         var symbol = document.getElementById (tag);
-        if (symbol) symbol.setAttribute ("class", state);
+        if (symbol) {
+           symbol.setAttribute ("class", state);
+           if ((!KnownState[name]) && lightsIsControllable(plugs[i].mode))
+              symbol.setAttribute ("onclick", "lightsControlClick('"+name+"')");
+        }
         KnownState[name] = state;
     }
 }
@@ -36,7 +48,7 @@ function lightsControlRequest (id, state) {
    command.send(null);
 }
 
-function controlClick (id) {
+function lightsControlClick (id) {
     if (KnownState[id])
        lightsControlRequest (encodeURIComponent(id), ChangeToReverse[KnownState[id]]);
 }

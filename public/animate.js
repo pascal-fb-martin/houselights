@@ -1,6 +1,8 @@
 // Animate.js: change the properties of HTML/SVG elements based on
 // the current status of points returned by the server.
 
+var LightsLatestStatus = 0;
+
 var RootUrl = "";
 
 var KnownState = new Object();
@@ -18,6 +20,8 @@ function lightsIsControllable (mode) {
 }
 
 function lightsUpdateStatus (response) {
+
+    if (response.lights.latest) LightsLatestStatus = response.lights.latest;
 
     var plugs = response.lights.plugs;
     for (var i = 0; i < plugs.length; i++) {
@@ -54,8 +58,10 @@ function lightsControlClick (id) {
 }
 
 function lightsStatus () {
+    var url = RootUrl+"/status";
+    if (LightsLatestStatus) url += "?known=" + LightsLatestStatus;
     var command = new XMLHttpRequest();
-    command.open("GET", RootUrl+"/status");
+    command.open("GET", url);
     command.onreadystatechange = function () {
         if (command.readyState === 4 && command.status === 200) {
             var response = JSON.parse(command.responseText);

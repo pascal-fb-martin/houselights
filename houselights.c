@@ -42,28 +42,44 @@
 #include "houseportalclient.h"
 #include "houselog.h"
 #include "houseconfig.h"
+#include "housestate.h"
 #include "housediscover.h"
 #include "housedepositor.h"
 #include "housealmanac.h"
 
+#include "houselights.h"
 #include "houselights_plugs.h"
 #include "houselights_schedule.h"
 #include "houselights_template.h"
 
+static int LiveState = -1;
+static int ConfigState = -1;
 
-static int lights_header (char *buffer, int size) {
+
+void houselights_liveupdate (void) {
+    housestate_changed (LiveState);
+}
+
+void houselights_configupdate(void) {
+    housestate_changed (ConfigState);
+}
+
+static int lights_header (char *buffer, int size, int state) {
 
     return snprintf (buffer, size,
                      "{\"host\":\"%s\",\"proxy\":\"%s\","
-                          "\"timestamp\":%lld,\"lights\":{",
+                          "\"timestamp\":%lld,\"lights\":{\"latest\":%lu,",
                      houselog_host(), houseportal_server(),
-                     (long long)time(0));
+                     (long long)time(0), housestate_current (state));
 }
 
 static const char *lights_status (const char *method, const char *uri,
                                   const char *data, int length) {
+
+    if (housestate_same (LiveState)) return "";
+
     static char buffer[65537];
-    int cursor = lights_header (buffer, sizeof(buffer));
+    int cursor = lights_header (buffer, sizeof(buffer), LiveState);
 
     cursor += houselights_plugs_status (buffer+cursor, sizeof(buffer)-cursor);
     cursor += housealmanac_status (buffer+cursor, sizeof(buffer)-cursor);
@@ -74,8 +90,11 @@ static const char *lights_status (const char *method, const char *uri,
 
 static const char *lights_schedule (const char *method, const char *uri,
                                     const char *data, int length) {
+
+    if (housestate_same (ConfigState)) return "";
+
     static char buffer[65537];
-    int cursor = lights_header (buffer, sizeof(buffer));
+    int cursor = lights_header (buffer, sizeof(buffer), ConfigState);
 
     cursor += houselights_schedule_status (buffer+cursor, sizeof(buffer)-cursor);
     cursor += snprintf (buffer+cursor, sizeof(buffer)-cursor, "}}");
@@ -113,6 +132,7 @@ static const char *lights_set (const char *method, const char *uri,
         echttp_error (400, "invalid state value");
         return "";
     }
+    housestate_changed (LiveState);
     return lights_status (method, uri, data, length);
 }
 
@@ -122,6 +142,7 @@ static const char *lights_save (const char *method, const char *uri,
     houseconfig_update (text);
     echttp_content_type_json ();
     housedepositor_put ("config", houseconfig_name(), text, strlen(text));
+    housestate_changed (ConfigState);
     return text;
 }
 
@@ -181,6 +202,7 @@ static void lights_background (int fd, int mode) {
 static void lights_config_listener (const char *name, time_t timestamp,
                                     const char *data, int length) {
     houselog_event ("SYSTEM", "CONFIG", "LOAD", "FROM DEPOT %s", name);
+    housestate_changed (ConfigState);
     const char *error = houseconfig_update (data);
     if (!error) houselights_schedule_refresh ();
 }
@@ -224,6 +246,10 @@ int main (int argc, const char **argv) {
             (HOUSE_FAILURE, "PLUG", "Cannot initialize: %s\n", error);
         exit(1);
     }
+
+    LiveState = housestate_declare ("live");
+    ConfigState = housestate_declare ("config");
+    housestate_cascade (ConfigState, LiveState);
 
     echttp_cors_allow_method("GET");
     echttp_protect (0, lights_protect);

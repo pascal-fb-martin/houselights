@@ -63,6 +63,7 @@
 #include "houselog.h"
 #include "housediscover.h"
 
+#include "houselights.h"
 #include "houselights_plugs.h"
 
 #define DEBUG if (echttp_isdebug()) printf
@@ -132,6 +133,7 @@ static int houselights_plugs_search (const char *name) {
     Plugs[free].status = 'u';
     Plugs[free].url[0] = 0;
 
+    houselights_configupdate ();
     return free;
 }
 
@@ -241,6 +243,7 @@ static void houselights_plugs_discovery (const char *provider,
                    houselog_event ("PLUG", Plugs[plug].name, "CHANGED",
                                    "TO %s", Plugs[plug].state);
                }
+               houselights_liveupdate ();
            }
        }
 
@@ -436,6 +439,7 @@ static void houselights_plugs_set (const char *name, const char *state,
                             Plugs[plug].commanded, Plugs[plug].cause);
         }
     }
+    houselights_liveupdate ();
     houselights_plugs_submit (plug, manual, cause);
 }
 

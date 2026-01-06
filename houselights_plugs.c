@@ -33,13 +33,20 @@
  *
  * A plug that is not known to any active web service is eventually removed.
  *
+ * void houselights_plugs_set
+ *          (const char *name, const char *state,
+ *           int pulse, int manual, const char *cause);
+ *
+ *    Set the specified device to the specified state.
+ *
  * void houselights_plugs_on
  *          (const char *name, int pulse, int manual, const char *cause);
- * void houselights_plugs_off (const char *name, int manual, const char *cause);
+ * void houselights_plugs_off
+ *          (const char *name, int manual, const char *cause);
  *
- *    Control one plug on of off. Note that, since these are lights, we do
- *    not apply a pulse on the 'off' state. The pulse is meant to protect
- *    against leaving a light on and wasting electricity.
+ *    Control one plug on of off. Note that, since most devices managed here
+ *    are lights, we do not apply a pulse on the 'off' state. The pulse is
+ *    meant to protect against leaving a light on and wasting electricity.
  *
  * void houselights_plugs_periodic (time_t now);
  *
@@ -396,8 +403,8 @@ static void houselights_plugs_submit (int plug, int manual, const char *cause) {
     return;
 }
 
-static void houselights_plugs_set (const char *name, const char *state,
-                                   int pulse, int manual, const char *cause) {
+void houselights_plugs_set (const char *name, const char *state,
+                            int pulse, int manual, const char *cause) {
 
     int plug = houselights_plugs_search (name);
     if (plug < 0) return;

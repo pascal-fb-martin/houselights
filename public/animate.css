@@ -1,3 +1,9 @@
+.alert {
+   stroke: #ffff00;
+   animation: fade 1s infinite alternate;
+   animation-timing-function: ease-in-out;
+}
+
 .on {
    stroke: #ffff00;
 }
@@ -8,5 +14,14 @@
 
 .silent {
    stroke: #888888;
+}
+
+@keyframes fade {
+  0% {
+    opacity: 0; /* Transparent */
+  }
+  100% {
+    opacity: 1; /* Opaque */
+  }
 }
 

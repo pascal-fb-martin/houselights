@@ -9,6 +9,7 @@ var KnownState = new Object();
 var ChangeToReverse = new Object();
 
 // These are the light states that can be controlled.
+ChangeToReverse["alert"] = "clear";
 ChangeToReverse["on"] = "off";
 ChangeToReverse["off"] = "on";
 

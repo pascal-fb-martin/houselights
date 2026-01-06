@@ -27,6 +27,11 @@ function lightsUpdateStatus (response) {
             button.innerHTML = 'ON';
             button.controlState = 'on';
             button.disabled = false;
+        } else if (plug.state == 'alert') {
+            state.innerHTML = 'ALERT';
+            button.innerHTML = 'CLEAR';
+            button.controlState = 'clear';
+            button.disabled = false;
         } else {
             state.innerHTML = plug.state;
             button.innerHTML = 'ON';
@@ -79,7 +84,7 @@ function lightsShowStatus (response) {
         button.id = 'button-'+tag;
         button.onclick = controlClick;
         button.controlName = plug.name;
-        button.controlstate = 'on';
+        button.controlState = 'on';
         inner.appendChild(button);
         outer.appendChild(inner);
     }

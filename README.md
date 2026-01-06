@@ -47,6 +47,8 @@ A floor plan SVG display can be created using Inkscape, but a few conventions mu
 
 * The Inkscape project must be exported as `plain SVG`, and this plain SVG file must be installed as `floorplan.svg` in `/var/lib/house/lights`.
 
+* Delete file `/var/cache/house/lights/mapbody.html`.
+
 > The `stroke` and `id` attributes can be modified using the Inkscape's XML Editor.
 
 ## Panel

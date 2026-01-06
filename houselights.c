@@ -119,6 +119,8 @@ static const char *lights_set (const char *method, const char *uri,
         return "";
     }
 
+    // The typical device is a light. One does not typically set a light on
+    // forever. This is different for the other states.
     if (!strcmp(state, "on")) {
         int pulse = pulsep ? atoi(pulsep) : 0;
         if (pulse < 0) {
@@ -126,11 +128,8 @@ static const char *lights_set (const char *method, const char *uri,
             return "";
         }
         houselights_plugs_on (name, pulse, 1, cause);
-    } else if (!strcmp(state, "off")) {
-        houselights_plugs_off (name, 1, cause);
     } else {
-        echttp_error (400, "invalid state value");
-        return "";
+        houselights_plugs_set (name, state, 0, 1, cause);
     }
     housestate_changed (LiveState);
     return lights_status (method, uri, data, length);

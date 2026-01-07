@@ -24,6 +24,7 @@
  *
  * This module handles lighting plugs, including:
  * - Run periodic discoveries to find which server controls each plug.
+ * - Run frequent poll for changes for servers that support it.
  * - Turn each plug on or off as requested. The requestor may be the
  *   schedule function, or a manual request from the outside.
  *
@@ -77,13 +78,20 @@
 
 #define DEFAULTSERVER "http://localhost/relay"
 
-static char **Providers;
+typedef struct {
+    char *url;
+    long long known;
+    time_t responded;  // last time we got an answer from this provider.
+} LightProvider;
+
+static LightProvider *Providers;
 static int    ProvidersSize = 0;
 static int    ProvidersCount = 0;
 
 typedef struct {
     char *name;
     char *mode;
+    int parent;
     const char *commanded;
     char *cause;
     char state[8];
@@ -127,6 +135,7 @@ static int houselights_plugs_search (const char *name) {
         free = PlugsCount++;
     }
     Plugs[free].name = strdup(name);
+    Plugs[free].parent = -1;
     Plugs[free].countdown = MAX_LIFE;
     Plugs[free].mode = 0;
     Plugs[free].commanded = 0;
@@ -151,17 +160,21 @@ static int houselights_plugs_is_output (int plug) {
     return 0;
 }
 
-static const char *houselights_plugs_provider_keep (const char *provider) {
+static int houselights_plugs_provider_search (const char *provider) {
     int i;
     for (i = 0; i < ProvidersCount; ++i) {
-        if (!strcmp (Providers[i], provider)) return Providers[i];
+        if (!strcmp (Providers[i].url, provider)) return i;
     }
     if (ProvidersCount >= ProvidersSize) {
         ProvidersSize += 16;
-        Providers = realloc (Providers, ProvidersSize * sizeof(char *));
+        Providers = realloc (Providers, ProvidersSize * sizeof(LightProvider));
     }
 
-    return Providers[ProvidersCount++] = strdup(provider); // Keep the string.
+    i = ProvidersCount++;
+    Providers[i].url = strdup(provider); // Keep the string.
+    Providers[i].known = 0;
+    Providers[i].responded = 0;
+    return i;
 }
 
 static int houselights_plugs_pending (int plug) {
@@ -199,6 +212,13 @@ static void houselights_plugs_discovery (const char *provider,
        return;
    }
 
+   int parent = houselights_plugs_provider_search (provider);
+   int known = echttp_json_search (tokens, ".latest");
+   if (known >= 0) {
+       Providers[parent].known = tokens[known].value.integer;
+   }
+   Providers[parent].responded = time(0);
+
    int controls = echttp_json_search (tokens, ".control.status");
    if (controls <= 0) {
        houselog_trace (HOUSE_FAILURE, provider, "no plug data");
@@ -226,6 +246,8 @@ static void houselights_plugs_discovery (const char *provider,
 
        int plug = houselights_plugs_search (inner->key);
        if (plug < 0) continue;
+
+       Plugs[plug].parent = parent;
 
        int mode = echttp_json_search (inner, ".mode");
        if (mode >= 0) {
@@ -298,28 +320,40 @@ static void houselights_plugs_discovered
    }
 
    if (status != 200) {
-       houselog_trace (HOUSE_FAILURE, provider, "HTTP error %d", status);
+       if (status != 304)
+           houselog_trace (HOUSE_FAILURE, provider, "HTTP error %d", status);
        return;
    }
    houselights_plugs_discovery (provider, data, length);
 }
 
-static void houselights_plugs_scan_server
-                (const char *service, void *context, const char *provider) {
+static void houselights_plugs_poll_server (int index) {
 
     char url[256];
 
-    provider = houselights_plugs_provider_keep (provider);
+    if (Providers[index].known > 0) {
+        snprintf (url, sizeof(url), "%s/status?known=%llu",
+                  Providers[index].url, Providers[index].known);
+    } else {
+        snprintf (url, sizeof(url), "%s/status", Providers[index].url);
+    }
 
-    snprintf (url, sizeof(url), "%s/status", provider);
-
-    DEBUG ("Attempting discovery at %s\n", url);
+    DEBUG ("Polling %s\n", url);
     const char *error = echttp_client ("GET", url);
     if (error) {
-        houselog_trace (HOUSE_FAILURE, provider, "%s", error);
+        houselog_trace (HOUSE_FAILURE, Providers[index].url, "%s", error);
         return;
     }
-    echttp_submit (0, 0, houselights_plugs_discovered, (void *)provider);
+    echttp_submit
+        (0, 0, houselights_plugs_discovered, (void *)(Providers[index].url));
+}
+
+static void houselights_plugs_scan_server
+                (const char *service, void *context, const char *provider) {
+
+    int index = houselights_plugs_provider_search (provider);
+    Providers[index].known = 0; // Force a full scan.
+    houselights_plugs_poll_server (index);
 }
 
 static void houselights_plugs_prune (time_t now) {
@@ -338,6 +372,7 @@ static void houselights_plugs_prune (time_t now) {
                 if (Plugs[i].mode) free (Plugs[i].mode);
                 Plugs[i].mode = 0;
                 Plugs[i].url[0] = 0;
+                Plugs[i].parent = -1;
             }
         }
     }
@@ -474,9 +509,15 @@ void houselights_plugs_periodic (time_t now) {
     }
     if (starting == 0) starting = now;
 
+    // Force a discovery every 2 seconds while a control is pending,
+    // but not if the provider supports poll for changes and
+    // not immediately after the control was issued.
+    // (Poll for changes is more efficient than doing a discovery.)
+    //
     if (now >= latestdiscovery + 2) {
         for (i = 0; i < PlugsCount; ++i) {
-            if (Plugs[i].url[0] == 0) continue;
+            if (Plugs[i].parent < 0) continue; // pruned.
+            if (Providers[Plugs[i].parent].known > 0) continue; // Not needed.
             if (houselights_plugs_pending(i)) {
                 // Force a discovery ever 2 seconds, but not immediately
                 // after the command.
@@ -485,6 +526,20 @@ void houselights_plugs_periodic (time_t now) {
                     break;
                 }
             }
+        }
+    }
+
+    // Poll for changes all known providers for change every second
+    // between two discoveries.
+    // (The discovery causes a full scan every minute--see later.)
+    if (now < latestdiscovery + 60) {
+        for (i = 0; i < ProvidersCount; ++i) {
+            if (Providers[i].known <= 0) continue;
+            if (now - Providers[i].responded >= 120) {
+                Providers[i].known = 0; // Erase stale knowledge.
+                continue; // Skip dead providers.
+            }
+            houselights_plugs_poll_server (i);
         }
     }
 
@@ -515,7 +570,7 @@ int houselights_plugs_status (char *buffer, int size) {
 
     for (i = 0; i < ProvidersCount; ++i) {
         cursor += snprintf (buffer+cursor, size-cursor,
-                            "%s\"%s\"", prefix, Providers[i]);
+                            "%s\"%s\"", prefix, Providers[i].url);
         if (cursor >= size) goto overflow;
         prefix = ",";
     }

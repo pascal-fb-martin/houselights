@@ -4,9 +4,18 @@
 <link rel="stylesheet" href="/house.css">
 <script>
 
+var LightsLatestStatus = 0;
 var LightsCount = 0;
 
+function isLight (plug) {
+    if (!plug.gear) return false;
+    if (plug.gear.toLowerCase() != "light") return false;
+    return true;
+}
+
 function lightsUpdateStatus (response) {
+
+    if (response.lights.latest) LightsLatestStatus = response.lights.latest;
 
     document.getElementsByTagName('title')[0].innerHTML =
         response.host+' - Lights Panel';
@@ -14,9 +23,14 @@ function lightsUpdateStatus (response) {
     var plugs = response.lights.plugs;
     for (var i = 0; i < plugs.length; i++) {
         var plug = plugs[i];
+        if (! isLight (plug)) continue;
         var tag = plug.name.replace (/ /g,'-')
         var button = document.getElementById ('button-'+tag);
-        if (!button) continue;
+        if (!button) {
+            if (plug.state != 'silent')
+                LightsLatestStatus = LightsCount = 0; // Force complete refresh
+            continue;
+        }
         if (plug.state == 'on') {
             button.className = 'controlOn';
             button.controlState = 'off';
@@ -64,7 +78,7 @@ function lightsShowStatus (response) {
    var outer = iolist.insertRow();
    for (var i = 0; i < plugs.length; i++) {
         var plug = plugs[i];
-        if (!plug.light) continue;
+        if (! isLight(plug)) continue;
         if (plug.state == 'silent') continue;
         var tag = plug.name.replace (/ /g,'-')
 
@@ -90,8 +104,12 @@ function lightsShowStatus (response) {
 }
 
 function lightsStatus () {
+
+    var url = "/lights/status";
+    if (LightsLatestStatus) url += "?known=" + LightsLatestStatus;
+
     var command = new XMLHttpRequest();
-    command.open("GET", "/lights/status");
+    command.open("GET", url);
     command.onreadystatechange = function () {
         if (command.readyState === 4 && command.status === 200) {
             var response = JSON.parse(command.responseText);

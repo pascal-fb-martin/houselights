@@ -90,6 +90,7 @@ static int    ProvidersCount = 0;
 
 typedef struct {
     char *name;
+    char *gear;
     char *mode;
     int parent;
     const char *commanded;
@@ -100,7 +101,6 @@ typedef struct {
     time_t requested;
     time_t deadline;
     char manual;
-    char is_light;
     char status; // u: unmapped, i: idle, a: active (pending).
     char url[256];
 } LightPlug;
@@ -145,7 +145,7 @@ static int houselights_plugs_search (const char *name) {
     Plugs[free].pulse = 0;
     Plugs[free].manual = 0;
     Plugs[free].cause = 0;
-    Plugs[free].is_light = 0;
+    Plugs[free].gear = 0;
     Plugs[free].status = 'u';
     Plugs[free].url[0] = 0;
 
@@ -240,10 +240,6 @@ static void houselights_plugs_discovery (const char *provider,
    for (i = 0; i < n; ++i) {
        ParserToken *inner = tokens + controls + innerlist[i];
 
-       // Only consider lights. Still accept no gear field (compatibility)
-       int gear = echttp_json_search (inner, ".gear");
-       if (gear >= 0 && strcmp (inner[gear].value.string, "light")) continue;
-
        int plug = houselights_plugs_search (inner->key);
        if (plug < 0) continue;
 
@@ -304,7 +300,20 @@ static void houselights_plugs_discovery (const char *provider,
        }
 
        Plugs[plug].countdown = MAX_LIFE; // New lease in life.
-       Plugs[plug].is_light = (gear >= 0);
+
+       int gear = echttp_json_search (inner, ".gear");
+       if (gear) {
+           const char *value = inner[gear].value.string;
+           if (!Plugs[plug].gear) {
+               Plugs[plug].gear = strdup (value);
+           } else if (strcasecmp (value, Plugs[plug].gear)) {
+               free (Plugs[plug].gear);
+               Plugs[plug].gear = strdup (value);
+           }
+       } else if (Plugs[plug].gear) {
+           free (Plugs[plug].gear);
+           Plugs[plug].gear = 0;
+       }
    }
 }
 
@@ -585,6 +594,7 @@ int houselights_plugs_status (char *buffer, int size) {
         char s[512];
         char p[256];
         char m[256];
+        char g[256];
 
         if (!Plugs[i].name) continue; // Ignore obsolete entries.
 
@@ -604,9 +614,14 @@ int houselights_plugs_status (char *buffer, int size) {
         else
             m[0] = 0;
 
+        if (Plugs[i].gear)
+            snprintf (g, sizeof(g), ",\"gear\":\"%s\"", Plugs[i].gear);
+        else
+            g[0] = 0;
+
         cursor += snprintf (buffer+cursor, size-cursor,
-                            "%s{\"name\":\"%s\",\"status\":\"%c\",\"state\":\"%s\",\"light\":%s%s%s%s}",
-                            prefix, Plugs[i].name, Plugs[i].status, Plugs[i].state, Plugs[i].is_light?"true":"false", s, p, m);
+                            "%s{\"name\":\"%s\",\"status\":\"%c\",\"state\":\"%s\"%s%s%s%s}",
+                            prefix, Plugs[i].name, Plugs[i].status, Plugs[i].state, g, s, p, m);
         if (cursor >= size) goto overflow;
         prefix = ",";
     }

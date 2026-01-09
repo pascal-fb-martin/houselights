@@ -302,7 +302,7 @@ static void houselights_plugs_discovery (const char *provider,
        Plugs[plug].countdown = MAX_LIFE; // New lease in life.
 
        int gear = echttp_json_search (inner, ".gear");
-       if (gear) {
+       if (gear >= 0) {
            const char *value = inner[gear].value.string;
            if (!Plugs[plug].gear) {
                Plugs[plug].gear = strdup (value);

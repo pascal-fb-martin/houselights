@@ -4,9 +4,12 @@
 <link rel="stylesheet" href="/house.css">
 <script>
 
+var LightsLatestStatus = 0;
 var LightsCount = 0;
 
 function lightsUpdateStatus (response) {
+
+    if (response.lights.latest) LightsLatestStatus = response.lights.latest;
 
     document.getElementsByTagName('title')[0].innerHTML =
         response.host+' - Ligths Control';
@@ -72,6 +75,13 @@ function lightsShowStatus (response) {
 
         inner = document.createElement("td");
         label = document.createElement("span");
+        label.innerHTML = plug.gear?plug.gear:"";
+        label.id = 'gear-'+tag;
+        inner.appendChild(label);
+        outer.appendChild(inner);
+
+        inner = document.createElement("td");
+        label = document.createElement("span");
         label.innerHTML = plug.state;
         label.id = 'state-'+tag;
         inner.appendChild(label);
@@ -91,8 +101,12 @@ function lightsShowStatus (response) {
 }
 
 function lightsStatus () {
+
+    var url = "/lights/status";
+    if (LightsLatestStatus) url += "?known=" + LightsLatestStatus;
+
     var command = new XMLHttpRequest();
-    command.open("GET", "/lights/status");
+    command.open("GET", url);
     command.onreadystatechange = function () {
         if (command.readyState === 4 && command.status === 200) {
             var response = JSON.parse(command.responseText);
@@ -130,6 +144,7 @@ window.onload = function() {
    <table class="housewidetable iolist" border="0">
       <tr>
          <th width="14%">NAME</th>
+         <th width="14%">GEAR</th>
          <th width="10%">STATE</th>
          <th width="10%">CONTROL</th>
       </tr>

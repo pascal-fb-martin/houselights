@@ -1,3 +1,12 @@
+houselights (2.3) UNRELEASED; urgency=low
+
+   * Add controls on the SVG display.
+   * Improve polling using change detection, both as server and client.
+   * Support the "alert" state (make camera symbol blink on motion detection)
+   * Monitor all points, regardless of the gear. Still filter lights on panels.
+
+ -- Pascal Martin <pascal.fb.martin@gmail.com>  Fri, 9 Jan 2026 12:00:00 PDT
+
 houselights (2.2) UNRELEASED; urgency=low
 
    * Add basic SVG animation.

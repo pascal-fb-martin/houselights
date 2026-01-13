@@ -62,8 +62,8 @@ install-ui: install-preamble
 	$(INSTALL) -m 0644 public/* $(DESTDIR)$(SHARE)/public/lights
 	$(INSTALL) -m 0755 -d $(DESTDIR)/var/lib/house/lights
 	$(INSTALL) -m 0644 mapbody.htmt $(DESTDIR)/var/lib/house/lights
-	$(INSTALL) -m 0755 -d $(DESTDIR)$(EXTRADOC)/.$(HPKG)/gallery
-	$(INSTALL) -m 0644 gallery/* $(DESTDIR)$(EXTRADOC)/.$(HPKG)/gallery
+	$(INSTALL) -m 0755 -d $(DESTDIR)$(EXTRADOC)/$(HPKG)/gallery
+	$(INSTALL) -m 0644 gallery/* $(DESTDIR)$(EXTRADOC)/$(HPKG)/gallery
 	if [ "x$(DESTDIR)" = "x" ] ; then grep -q '^house:' /etc/passwd && chown -R house:house /var/lib/house/lights /var/cache/house/lights ; rm -rf /var/cache/house/lights/* ; fi
 
 install-runtime: install-preamble

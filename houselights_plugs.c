@@ -191,13 +191,15 @@ static int houselights_plugs_pending (int plug) {
     return 1; // No reason for not submitting a control.
 }
 
+#define TOKEN_LIMIT 512
+
 static void houselights_plugs_discovery (const char *provider,
                                          char *data, int length) {
 
-   ParserToken tokens[100];
-   int  innerlist[100];
+   ParserToken tokens[TOKEN_LIMIT];
+   int  innerlist[TOKEN_LIMIT];
+   int  count = TOKEN_LIMIT;
    char path[256];
-   int  count = 100;
    int  i;
 
    // Analyze the answer and retrieve the control points matching our plugs.
@@ -231,7 +233,7 @@ static void houselights_plugs_discovery (const char *provider,
        return;
    }
 
-   error = echttp_json_enumerate (tokens+controls, innerlist);
+   error = echttp_json_enumerate (tokens+controls, innerlist, TOKEN_LIMIT);
    if (error) {
        houselog_trace (HOUSE_FAILURE, path, "%s", error);
        return;

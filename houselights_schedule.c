@@ -163,13 +163,14 @@ const char *houselights_schedule_refresh (void) {
 
         if (echttp_isdebug()) printf ("Schedule: %d entries\n", count);
 
+        int *list = calloc (count, sizeof(int));
+        houseconfig_enumerate (schedules, list, count);
+
         if (count > MAX_SCHEDULES) count = MAX_SCHEDULES;
         SchedulesCount = 0;
 
         for (i = 0; i < count; ++i) {
-            char path[128];
-            snprintf (path, sizeof(path), "[%d]", i);
-            int item = houseconfig_object (schedules, path);
+            int item = list[i];
             if (item <= 0) continue;
             const char *device = houseconfig_string (item, ".device");
             const char *on = houseconfig_string (item, ".on");
@@ -180,6 +181,7 @@ const char *houselights_schedule_refresh (void) {
             houselights_schedule_add (device, on, off, days);
             if (echttp_isdebug()) printf ("  %s\n", device);
         }
+        free (list);
     }
     return 0;
 }

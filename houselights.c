@@ -136,12 +136,11 @@ static const char *lights_set (const char *method, const char *uri,
 }
 
 static const char *lights_save (const char *method, const char *uri,
-                                  const char *data, int length) {
+                                const char *data, int length, const char *reason) {
     const char *text = lights_schedule (method, uri, data, length);
-    houseconfig_update (text);
-    echttp_content_type_json ();
-    housedepositor_put ("config", houseconfig_name(), text, strlen(text));
+    houseconfig_save (text, reason);
     housestate_changed (ConfigState);
+    echttp_content_type_json ();
     return text;
 }
 
@@ -149,14 +148,14 @@ static const char *lights_enable (const char *method, const char *uri,
                                   const char *data, int length) {
 
     houselights_schedule_enable();
-    return lights_save (method, uri, data, length);
+    return lights_save (method, uri, data, length, "SCHEDULE ENABLED");
 }
 
 static const char *lights_disable (const char *method, const char *uri,
                                    const char *data, int length) {
 
     houselights_schedule_disable();
-    return lights_save (method, uri, data, length);
+    return lights_save (method, uri, data, length, "SCHEDULE DISABLED");
 }
 
 static const char *lights_add (const char *method, const char *uri,
@@ -170,7 +169,7 @@ static const char *lights_add (const char *method, const char *uri,
     houselights_schedule_add (device, on, off, atoi(days));
     housediscover (0);
 
-    return lights_save (method, uri, data, length);
+    return lights_save (method, uri, data, length, "SCHEDULE RULE ADDED");
 }
 
 static const char *lights_delete (const char *method, const char *uri,
@@ -182,7 +181,7 @@ static const char *lights_delete (const char *method, const char *uri,
         return "";
     }
     houselights_schedule_delete (id);
-    return lights_save (method, uri, data, length);
+    return lights_save (method, uri, data, length, "SCHEDULE RULE DELETED");
 }
 
 static void lights_background (int fd, int mode) {
@@ -195,15 +194,13 @@ static void lights_background (int fd, int mode) {
     housediscover (now);
     housealmanac_background (now);
     houselog_background (now);
+    houseconfig_background (now);
     housedepositor_periodic (now);
 }
 
-static void lights_config_listener (const char *name, time_t timestamp,
-                                    const char *data, int length) {
-    houselog_event ("SYSTEM", "CONFIG", "LOAD", "FROM DEPOT %s", name);
+static const char *lights_refresh (void) {
     housestate_changed (ConfigState);
-    const char *error = houseconfig_update (data);
-    if (!error) houselights_schedule_refresh ();
+    return houselights_schedule_refresh ();
 }
 
 static void lights_protect (const char *method, const char *uri) {
@@ -233,17 +230,12 @@ int main (int argc, const char **argv) {
     }
     houselog_initialize ("lights", argc, argv);
 
-    houseconfig_default ("--config=lights");
-    error = houseconfig_load (argc, argv);
+    housediscover_initialize (argc, argv);
+    housedepositor_initialize (argc, argv);
+    error = houseconfig_initialize ("lights", lights_refresh, argc, argv);
     if (error) {
         houselog_trace
             (HOUSE_FAILURE, "CONFIG", "Cannot load configuration: %s\n", error);
-    }
-    error = houselights_schedule_refresh ();
-    if (error) {
-        houselog_trace
-            (HOUSE_FAILURE, "PLUG", "Cannot initialize: %s\n", error);
-        exit(1);
     }
 
     LiveState = housestate_declare ("live");
@@ -265,9 +257,6 @@ int main (int argc, const char **argv) {
 
     echttp_static_route ("/", "/usr/local/share/house/public");
     echttp_background (&lights_background);
-    housediscover_initialize (argc, argv);
-    housedepositor_initialize (argc, argv);
-    housedepositor_subscribe ("config", houseconfig_name(), lights_config_listener);
 
     houselog_event ("SERVICE", "lights", "STARTED", "ON %s", houselog_host());
     echttp_loop();

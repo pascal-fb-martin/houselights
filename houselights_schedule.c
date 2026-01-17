@@ -160,9 +160,8 @@ const char *houselights_schedule_refresh (void) {
 
     if (schedules > 0) {
         int count = houseconfig_array_length (schedules);
-        if (count > MAX_SCHEDULES) count = MAX_SCHEDULES;
-
         if (echttp_isdebug()) printf ("Schedule: %d entries\n", count);
+        if (count > MAX_SCHEDULES) count = MAX_SCHEDULES;
 
         int *list = calloc (count, sizeof(int));
         count = houseconfig_enumerate (schedules, list, count);

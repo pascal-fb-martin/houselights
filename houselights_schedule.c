@@ -146,7 +146,7 @@ const char *houselights_schedule_refresh (void) {
     const char *mode = houseconfig_string (0, ".lights.mode");
     int schedules = houseconfig_array(0, ".lights.schedules");
 
-    if (mode && strcmp (mode, "auto")) {
+    if (!mode || strcmp (mode, "auto")) {
         ScheduleDisabled = 1;
     } else {
         ScheduleDisabled = 0;

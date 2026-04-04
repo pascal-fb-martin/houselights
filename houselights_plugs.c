@@ -263,8 +263,8 @@ static void houselights_plugs_discovery (const char *provider,
        if (state >= 0) {
            if (strcmp (Plugs[plug].state, inner[state].value.string)) {
                int hasstate = (Plugs[plug].state[0] > 0);
-               strncpy (Plugs[plug].state,
-                        inner[state].value.string, sizeof(Plugs[0].state));
+               memccpy (Plugs[plug].state,
+                        inner[state].value.string, 0, sizeof(Plugs[0].state));
                if (hasstate) {
                    // Do not report the initial state acquisition as a change.
                    houselog_event ("PLUG", Plugs[plug].name, "CHANGED",

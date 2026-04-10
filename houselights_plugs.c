@@ -67,6 +67,7 @@
 #include <echttp.h>
 #include <echttp_json.h>
 #include <echttp_encoding.h>
+#include <echttp_libc.h>
 
 #include "houselog.h"
 #include "housediscover.h"
@@ -263,8 +264,8 @@ static void houselights_plugs_discovery (const char *provider,
        if (state >= 0) {
            if (strcmp (Plugs[plug].state, inner[state].value.string)) {
                int hasstate = (Plugs[plug].state[0] > 0);
-               memccpy (Plugs[plug].state,
-                        inner[state].value.string, 0, sizeof(Plugs[0].state));
+               strtcpy (Plugs[plug].state,
+                        inner[state].value.string, sizeof(Plugs[0].state));
                if (hasstate) {
                    // Do not report the initial state acquisition as a change.
                    houselog_event ("PLUG", Plugs[plug].name, "CHANGED",

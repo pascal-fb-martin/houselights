@@ -166,6 +166,11 @@ static const char *lights_add (const char *method, const char *uri,
     const char *off = echttp_parameter_get("off");
     const char *days = echttp_parameter_get("days");
 
+    if (!device || !on || !off || !days) {
+        echttp_error (400, "Invalid schedule rule");
+        return "";
+    }
+
     houselights_schedule_add (device, on, off, atoi(days));
     housediscover (0);
 

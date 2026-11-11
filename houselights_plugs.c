@@ -229,10 +229,7 @@ static void houselights_plugs_discovery (const char *provider,
    }
 
    int n = tokens[controls].length;
-   if (n <= 0) {
-       houselog_trace (HOUSE_FAILURE, provider, "empty plug data");
-       return;
-   }
+   if (n <= 0) return;
 
    error = echttp_json_enumerate (tokens+controls, innerlist, TOKEN_LIMIT);
    if (error) {

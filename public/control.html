@@ -57,9 +57,13 @@ function controlClick () {
     command.send(null);
 }
 
+function sortPlugs (a, b) {
+    return a.name > b.name;
+}
+
 function lightsShowStatus (response) {
    var iolist = document.getElementsByClassName ('iolist')[0];
-   var plugs = response.lights.plugs;
+   var plugs = response.lights.plugs.sort(sortPlugs);
    for (var i = 0; i < plugs.length; i++) {
         var plug = plugs[i];
         var tag = plug.name.replace (/ /g,'-')

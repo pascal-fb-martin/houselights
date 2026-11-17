@@ -59,12 +59,16 @@ function controlClick () {
     command.send(null);
 }
 
+function sortPlugs (a, b) {
+    return a.name > b.name;
+}
+
 function lightsShowStatus (response) {
    var iolist = document.getElementById ('iolist');
    for (var i = iolist.rows.length - 1; i >= 0; --i) {
        iolist.deleteRow(i);
    }
-   var plugs = response.lights.plugs;
+   var plugs = response.lights.plugs.sort(sortPlugs);
    var columns = Math.ceil (window.innerWidth / 200);
    var width = Math.floor (100 / columns);
    var cursor = 0;

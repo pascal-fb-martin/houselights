@@ -200,8 +200,6 @@ static void houselights_plugs_discovery (const char *provider,
    ParserToken tokens[TOKEN_LIMIT];
    int  innerlist[TOKEN_LIMIT];
    int  count = TOKEN_LIMIT;
-   char path[256];
-   int  i;
 
    // Analyze the answer and retrieve the control points matching our plugs.
    const char *error = echttp_json_parse (data, tokens, &count);
@@ -233,10 +231,11 @@ static void houselights_plugs_discovery (const char *provider,
 
    error = echttp_json_enumerate (tokens+controls, innerlist, TOKEN_LIMIT);
    if (error) {
-       houselog_trace (HOUSE_FAILURE, path, "%s", error);
+       houselog_trace (HOUSE_FAILURE, ".control.status", "%s", error);
        return;
    }
 
+   int  i;
    for (i = 0; i < n; ++i) {
        ParserToken *inner = tokens + controls + innerlist[i];
 
@@ -330,7 +329,8 @@ static void houselights_plugs_discovered
 
    if (status != 200) {
        if (status != 304)
-           houselog_trace (HOUSE_FAILURE, provider, "HTTP error %d", status);
+           houselog_trace (HOUSE_FAILURE, provider,
+                           "HTTP %d %s", status, echttp_reason());
        return;
    }
    houselights_plugs_discovery (provider, data, length);
@@ -350,7 +350,7 @@ static void houselights_plugs_poll_server (int index) {
     DEBUG ("Polling %s\n", url);
     const char *error = echttp_client ("GET", url);
     if (error) {
-        houselog_trace (HOUSE_FAILURE, Providers[index].url, "%s", error);
+        houselog_trace (HOUSE_FAILURE, "POLL", "%s: %s", url, error);
         return;
     }
     echttp_submit
@@ -402,7 +402,8 @@ static void houselights_plugs_controlled
    // TBD: add an event to record that the command was processed. Too verbose?
    if (status != 200) {
        if (plug->status != 'e') {
-           houselog_trace (HOUSE_FAILURE, plug->name, "HTTP code %d", status);
+           houselog_trace (HOUSE_FAILURE, plug->name,
+                           "HTTP %d %s", status, echttp_reason());
            plug->status = 'e';
        }
        return;
@@ -439,7 +440,7 @@ static void houselights_plugs_submit (int plug, int manual, const char *cause) {
               cause);
     const char *error = echttp_client ("GET", url);
     if (error) {
-        houselog_trace (HOUSE_FAILURE, Plugs[plug].name, "cannot create socket for %s, %s", url, error);
+        houselog_trace (HOUSE_FAILURE, Plugs[plug].name, "%s: %s", url, error);
         return;
     }
     DEBUG ("GET %s\n", url);

@@ -197,6 +197,8 @@ static int houselights_plugs_pending (int plug) {
 static void houselights_plugs_discovery (const char *provider,
                                          char *data, int length) {
 
+   if (!data || !length) return; // No data to parse
+
    ParserToken tokens[TOKEN_LIMIT];
    int  innerlist[TOKEN_LIMIT];
    int  count = TOKEN_LIMIT;
@@ -327,7 +329,7 @@ static void houselights_plugs_discovered
        return;
    }
 
-   if (status != 200) {
+   if (!ECHTTP_SUCCESS(status)) {
        if (status != 304)
            houselog_trace (HOUSE_FAILURE, provider,
                            "HTTP %d %s", status, echttp_reason());
@@ -400,7 +402,7 @@ static void houselights_plugs_controlled
    }
 
    // TBD: add an event to record that the command was processed. Too verbose?
-   if (status != 200) {
+   if (!ECHTTP_SUCCESS(status)) {
        if (plug->status != 'e') {
            houselog_trace (HOUSE_FAILURE, plug->name,
                            "HTTP %d %s", status, echttp_reason());
@@ -410,7 +412,6 @@ static void houselights_plugs_controlled
    }
    plug->status = 'i';
 
-   if (!data) return;
    houselights_plugs_discovery (plug->url, data, length);
 }
 

@@ -48,7 +48,7 @@ clean:
 rebuild: clean all
 
 %.o: %.c
-	gcc -c -Wall -Os -o $@ $<
+	gcc -c -Wall -g -Os -o $@ $<
 
 houselights: $(OBJS)
 	gcc -Os -o houselights $(OBJS) -lhouseportal -lechttp -lssl -lcrypto -lmagic -lrt

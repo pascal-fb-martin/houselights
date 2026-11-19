@@ -6,12 +6,12 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor,
@@ -36,6 +36,7 @@
 #include <string.h>
 
 #include "echttp.h"
+#include "echttp_hash.h"
 #include "echttp_cors.h"
 #include "echttp_static.h"
 
@@ -55,6 +56,7 @@
 static int LiveState = -1;
 static int ConfigState = -1;
 
+static echttp_hash StateLexicon = {0};
 
 void houselights_liveupdate (void) {
     housestate_changed (LiveState);
@@ -62,6 +64,21 @@ void houselights_liveupdate (void) {
 
 void houselights_configupdate(void) {
     housestate_changed (ConfigState);
+}
+
+static const char *lights_permanent (const char *state) {
+
+    int index = echttp_hash_find (&StateLexicon, state);
+    if (index <= 0) {
+        // This is a new state, make it permanent (only once)
+        char *permanent = strdup (state);
+        index = echttp_hash_add (&StateLexicon, permanent);
+        if (index <= 0) {
+            free (permanent);
+            return 0;
+        }
+    }
+    return echttp_hash_key (&StateLexicon, index);
 }
 
 static int lights_header (char *buffer, int size, int state) {
@@ -116,6 +133,11 @@ static const char *lights_set (const char *method, const char *uri,
     }
     if (!state) {
         echttp_error (400, "missing state value");
+        return "";
+    }
+    state = lights_permanent (state);
+    if (!state) {
+        echttp_error (500, "internal state lexicon full");
         return "";
     }
 
@@ -226,6 +248,8 @@ int main (int argc, const char **argv) {
     signal(SIGPIPE, SIG_IGN);
 
     echttp_default ("-http-service=dynamic");
+
+    echttp_hash_create (&StateLexicon, 256);
 
     argc = echttp_open (argc, argv);
     if (echttp_dynamic_port()) {
